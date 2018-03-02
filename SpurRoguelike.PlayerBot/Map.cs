@@ -2,23 +2,16 @@
 using AStarNavigator;
 using AStarNavigator.Providers;
 using SpurRoguelike.Core.Primitives;
-using SpurRoguelike.Core.Views;
 
 namespace SpurRoguelike.PlayerBot
 {
     class Map : IBlockedProvider, INeighborProvider
     {
-        private LevelView _Level;
-        private IPathfindingContext _Context;
+        private IMapPathfindingContext _Context;
 
-        public Map(IPathfindingContext context)
+        public Map(IMapPathfindingContext context)
         {
             _Context = context;
-        }
-
-        public void Update(LevelView level)
-        {
-            _Level = level;
         }
 
         #region IBlockedProvider
@@ -30,17 +23,17 @@ namespace SpurRoguelike.PlayerBot
             if (location == _Context.TargetLocation)
                 return false;
 
-            if (location.X < 0 || location.Y < 0 || location.X >= _Level.Field.Width || location.Y >= _Level.Field.Height)
+            if (location.X < 0 || location.Y < 0 || location.X >= _Context.Level.Field.Width || location.Y >= _Context.Level.Field.Height)
                 return true;
 
-            CellType cellType = _Level.Field[location];
+            CellType cellType = _Context.Level.Field[location];
 
             if (cellType == CellType.Wall || cellType == CellType.Trap || cellType == CellType.Exit)
                 return true;
 
-            return _Level.GetHealthPackAt(location).HasValue ||
-                   _Level.GetItemAt(location).HasValue ||
-                   _Level.GetMonsterAt(location).HasValue;
+            return _Context.Level.GetHealthPackAt(location).HasValue ||
+                   _Context.Level.GetItemAt(location).HasValue ||
+                   _Context.Level.GetMonsterAt(location).HasValue;
         }
 
         #endregion
