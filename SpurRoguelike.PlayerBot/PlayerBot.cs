@@ -1,30 +1,65 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using SpurRoguelike.Core;
 using SpurRoguelike.Core.Primitives;
 using SpurRoguelike.Core.Views;
 
 namespace SpurRoguelike.PlayerBot
 {
-    public class PlayerBot : IPlayerController
+    public class PlayerBot : IPlayerController, IPathfindingContext
     {
-        public Turn MakeTurn(LevelView levelView, IMessageReporter messageReporter)
+        private readonly AStarNavigator.TileNavigator _Navigator;
+
+        private LevelView _LevelView;
+        private PawnView _Player;
+
+        private readonly Map _Map;
+
+        private Location _Exit => _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
+
+        public PlayerBot()
         {
-            messageReporter.ReportMessage("Hey ho! I'm still breathing");
-
-            if (levelView.Random.NextDouble() < 0.1)
-                return Turn.None;
-
-            var nearbyMonster = levelView.Monsters.FirstOrDefault(m => IsInAttackRange(levelView.Player.Location, m.Location));
-
-            if (nearbyMonster.HasValue)
-                return Turn.Attack(nearbyMonster.Location - levelView.Player.Location);
-
-            return Turn.Step((StepDirection)levelView.Random.Next(4));
+            _Map = new Map(this);
+            _Navigator = new AStarNavigator.TileNavigator(_Map, _Map, new AStarNavigator.Algorithms.PythagorasAlgorithm(), new AStarNavigator.Algorithms.ManhattanHeuristicAlgorithm());
         }
 
-        private static bool IsInAttackRange(Location a, Location b)
+        #region IPlayerController
+
+        public Turn MakeTurn(LevelView levelView, IMessageReporter messageReporter)
         {
-            return a.IsInRange(b, 1);
+            InitializeTurn(levelView);
+
+            return GoTo(_Exit);
+        }
+
+        #endregion
+
+        #region IPathfindingContext
+
+        public Location TargetLocation { get; set; }
+
+        #endregion
+
+        private void InitializeTurn(LevelView levelView)
+        {
+            _LevelView = levelView;
+            _Player = levelView.Player;
+
+            _Map.Update(levelView);
+        }
+
+        private Turn GoTo(Location location)
+        {
+            TargetLocation = location;
+
+            IEnumerable<AStarNavigator.Tile> path = _Navigator.Navigate(
+                new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
+                new AStarNavigator.Tile(location.X, location.Y)
+                );
+
+            Offset nextStep = new Offset((int)path.First().X - _Player.Location.X, (int)path.First().Y - _Player.Location.Y);
+
+            return Turn.Step(nextStep);
         }
     }
 }
