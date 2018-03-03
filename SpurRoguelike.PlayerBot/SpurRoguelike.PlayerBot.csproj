@@ -43,8 +43,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DistanceAlgorithm.cs" />
-    <Compile Include="IDistanceAlgorithmContext.cs" />
     <Compile Include="IMapPathfindingContext.cs" />
     <Compile Include="Map.cs" />
     <Compile Include="PlayerBot.cs" />
