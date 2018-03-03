@@ -22,7 +22,7 @@ namespace SpurRoguelike.PlayerBot
 
         private int _PreviousHealth;
         private List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
-        private int _CachedPathIndex;
+        private int _CachedPathPointIndex;
         private int _PathfindingRetriesCount;
 
         private bool _BeCareful;
@@ -182,7 +182,7 @@ namespace SpurRoguelike.PlayerBot
             if (turn != null)
                 return turn;
 
-            return GoToCached(_Exit);
+            return GoTo(_Exit);
         }
 
         private Turn Panic()
@@ -202,46 +202,17 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn GoTo(Location location)
         {
-            TargetLocation = location;
-
-            IEnumerable<AStarNavigator.Tile> path = _Navigator.Navigate(
-                new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
-                new AStarNavigator.Tile(location.X, location.Y)
-                );
-
-            if (path == null)
-            {
-                _PathfindingRetriesCount++;
-
-                if (_PathfindingRetriesCount == 3)
-                {
-                    _PathfindingRetriesCount = 0;
-
-                    return null;
-                }
-
-                return Turn.None;
-            }
-
-            Offset nextStep = new Offset((int)path.First().X - _Player.Location.X, (int)path.First().Y - _Player.Location.Y);
-
-            return Turn.Step(nextStep);
-        }
-
-        private Turn GoToCached(Location location)
-        {
-            if (_CachedPathIndex == _CachedPath.Count || _CachedPathIndex == System.Math.Min(_LevelView.Field.VisibilityWidth, _LevelView.Field.VisibilityHeight) - 1)
+            AStarNavigator.Tile tile;
+            if (LocationIsVisible(location))
             {
                 TargetLocation = location;
 
-                _CachedPathIndex = 0;
-
-                _CachedPath = _Navigator.Navigate(
+                IEnumerable<AStarNavigator.Tile> path = _Navigator.Navigate(
                     new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
                     new AStarNavigator.Tile(location.X, location.Y)
-                    )?.ToList();
+                    );
 
-                if (_CachedPath == null)
+                if (path == null)
                 {
                     _PathfindingRetriesCount++;
 
@@ -251,15 +222,46 @@ namespace SpurRoguelike.PlayerBot
 
                         return null;
                     }
+
                     return Turn.None;
                 }
+
+                tile = path.First();
+            }
+            else
+            {
+                if (_CachedPathPointIndex == _CachedPath.Count || _CachedPathPointIndex == System.Math.Min(_LevelView.Field.VisibilityWidth, _LevelView.Field.VisibilityHeight) - 1)
+                {
+                    TargetLocation = location;
+
+                    _CachedPathPointIndex = 0;
+
+                    _CachedPath = _Navigator.Navigate(
+                        new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
+                        new AStarNavigator.Tile(location.X, location.Y)
+                        )?.ToList();
+
+                    if (_CachedPath == null)
+                    {
+                        _PathfindingRetriesCount++;
+
+                        if (_PathfindingRetriesCount == 3)
+                        {
+                            _PathfindingRetriesCount = 0;
+
+                            return null;
+                        }
+
+                        return Turn.None;
+                    }
+                }
+
+                tile = _CachedPath[_CachedPathPointIndex];
+
+                _CachedPathPointIndex++;
             }
 
-            AStarNavigator.Tile tile = _CachedPath[_CachedPathIndex];
-            _CachedPathIndex++;
-            Offset nextStep = new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y);
-
-            return Turn.Step(nextStep);
+            return Turn.Step(new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y));
         }
 
         private static int CalculateDistance(Location location1, Location location2)
@@ -275,6 +277,11 @@ namespace SpurRoguelike.PlayerBot
         private void Say(IMessageReporter reporter, string message)
         {
             reporter.ReportMessage("[BOT]: " + message);
+        }
+
+        private bool LocationIsVisible(Location location)
+        {
+            return _LevelView.Field[location] != CellType.Hidden;
         }
     }
 }

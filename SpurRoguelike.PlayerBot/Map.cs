@@ -80,7 +80,7 @@ namespace SpurRoguelike.PlayerBot
 
             result /= 0.5f * GetHealthPackCountInRange(location, 2) + 1;
 
-            result *= 0.8f * GetMonsterCountInRange(location, 1) + 1;
+            result *= GetMonsterCountInRange(location, 1) + 1;
 
             return result;
         }
