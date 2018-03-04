@@ -24,8 +24,9 @@ namespace SpurRoguelike.PlayerBot
         private List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
         private int _CachedPathPointIndex;
         private int _PathfindingRetriesCount;
+        private bool _DiscardCache = true;
 
-        private bool _BeCareful;
+        private bool _BeingCareful;
 
         public PlayerBot()
         {
@@ -39,7 +40,7 @@ namespace SpurRoguelike.PlayerBot
         {
             InitializeTurn(levelView);
 
-            if (_BeCareful)
+            if (_BeingCareful)
                 Say(messageReporter, "Being careful.");
 
             Turn turn = CheckForHealth();
@@ -89,7 +90,7 @@ namespace SpurRoguelike.PlayerBot
 
         public Location TargetLocation { get; set; }
 
-        public bool ApplyWeights => _BeCareful;
+        public bool ApplyWeights => _BeingCareful;
 
         #endregion
 
@@ -98,7 +99,7 @@ namespace SpurRoguelike.PlayerBot
             _LevelView = levelView;
             _Player = levelView.Player;
 
-            _BeCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
+            _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
         }
 
         private Turn CheckForHealth()
@@ -132,7 +133,8 @@ namespace SpurRoguelike.PlayerBot
             if (!closestMonster.Monster.Location.IsInRange(_Player.Location, 1))
                 return null;
 
-            int turnsToKill = (int)System.Math.Ceiling(closestMonster.Monster.Health / (((float)_Player.TotalAttack / closestMonster.Monster.Defence) * _BaseDamage * 0.95f));
+            int averagePlayerDamage = CalculateDamage(_Player, closestMonster.Monster, false);
+            int turnsToKill = (int)System.Math.Ceiling((float)closestMonster.Monster.Health / averagePlayerDamage);
 
             if (monsters.Count(m => m.Distance < turnsToKill) > 2)
                 return null;
@@ -197,14 +199,19 @@ namespace SpurRoguelike.PlayerBot
             if (!packs.Any())
                 return null;
 
+            if (_BeingCareful)
+                return GoToClosest(packs.Take(3).Select(p => p.Location));
+
             return GoTo(packs.First().Location);
         }
 
         private Turn GoTo(Location location)
         {
             AStarNavigator.Tile tile;
-            if (LocationIsVisible(location))
+            if (LocationIsVisible(location) || _BeingCareful)
             {
+                _DiscardCache = true;
+
                 TargetLocation = location;
 
                 IEnumerable<AStarNavigator.Tile> path = _Navigator.Navigate(
@@ -226,12 +233,16 @@ namespace SpurRoguelike.PlayerBot
                     return Turn.None;
                 }
 
+                _PathfindingRetriesCount = 0;
+
                 tile = path.First();
             }
             else
             {
-                if (_CachedPathPointIndex == _CachedPath.Count || _CachedPathPointIndex == System.Math.Min(_LevelView.Field.VisibilityWidth, _LevelView.Field.VisibilityHeight) - 1)
+                if (_DiscardCache || _CachedPathPointIndex == System.Math.Min(_LevelView.Field.VisibilityWidth, _LevelView.Field.VisibilityHeight) - 1)
                 {
+                    _DiscardCache = false;
+
                     TargetLocation = location;
 
                     _CachedPathPointIndex = 0;
@@ -254,12 +265,55 @@ namespace SpurRoguelike.PlayerBot
 
                         return Turn.None;
                     }
+
+                    _PathfindingRetriesCount = 0;
                 }
 
                 tile = _CachedPath[_CachedPathPointIndex];
 
                 _CachedPathPointIndex++;
             }
+
+            return Turn.Step(new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y));
+        }
+
+        private Turn GoToClosest(IEnumerable<Location> locations)
+        {
+            AStarNavigator.Tile tile;
+
+            _DiscardCache = true;
+
+            List<IEnumerable<AStarNavigator.Tile>> paths = new List<IEnumerable<AStarNavigator.Tile>>();
+            foreach (Location location in locations)
+            {
+                TargetLocation = locations.First();
+
+                IEnumerable<AStarNavigator.Tile> path = _Navigator.Navigate(
+                    new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
+                    new AStarNavigator.Tile(locations.First().X, locations.First().Y)
+                    );
+
+                if (path != null)
+                    paths.Add(path);
+            }
+
+            if (!paths.Any())
+            {
+                _PathfindingRetriesCount++;
+
+                if (_PathfindingRetriesCount == 3)
+                {
+                    _PathfindingRetriesCount = 0;
+
+                    return null;
+                }
+
+                return Turn.None;
+            }
+
+            _PathfindingRetriesCount = 0;
+
+            tile = paths.OrderBy(p => p.Count()).First().First();
 
             return Turn.Step(new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y));
         }
@@ -282,6 +336,11 @@ namespace SpurRoguelike.PlayerBot
         private bool LocationIsVisible(Location location)
         {
             return _LevelView.Field[location] != CellType.Hidden;
+        }
+
+        private int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
+        {
+            return (int)(((float)attacker.TotalAttack / target.Defence) * _BaseDamage * (maxDamage ? 1 : 0.95f));
         }
     }
 }
