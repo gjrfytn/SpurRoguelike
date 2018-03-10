@@ -8,5 +8,6 @@ namespace SpurRoguelike.PlayerBot
         LevelView Level { get; }
         Location TargetLocation { get; }
         bool ApplyWeights { get; }
+        bool[,] CachedWalls { get; }
     }
 }

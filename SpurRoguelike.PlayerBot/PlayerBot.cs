@@ -15,18 +15,18 @@ namespace SpurRoguelike.PlayerBot
 
         private LevelView _LevelView;
         private PawnView _Player;
+        private Location _Exit;
 
         private readonly Map _Map;
-
-        private Location _Exit => _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
 
         private int _PreviousHealth;
         private List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
         private int _CachedPathPointIndex;
-        private int _PathfindingRetriesCount;
         private bool _DiscardCache = true;
+        private bool[,] CacheLocations { get; set; }
 
         private bool _BeingCareful;
+
 
         public PlayerBot()
         {
@@ -92,14 +92,29 @@ namespace SpurRoguelike.PlayerBot
 
         public bool ApplyWeights => _BeingCareful;
 
+        public bool[,] CachedWalls { get; set; }
+
         #endregion
 
         private void InitializeTurn(LevelView levelView)
         {
             _LevelView = levelView;
             _Player = levelView.Player;
+            _Exit = _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
 
             _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
+            _ClearPathAttempts.Clear();
+
+            if (_LevelView.Field.Width != CachedWalls?.GetLength(0) || _LevelView.Field.Height != CachedWalls?.GetLength(1))
+            {
+                CacheLocations = new bool[_LevelView.Field.Width, _LevelView.Field.Height];
+                CachedWalls = new bool[_LevelView.Field.Width, _LevelView.Field.Height];
+                CachedWalls[_Exit.X, _Exit.Y] = true;
+                CacheWalls();
+            }
+
+            if (!CacheLocations[_Player.Location.X, _Player.Location.Y])
+                CacheWalls();
         }
 
         private Turn CheckForHealth()
@@ -154,7 +169,7 @@ namespace SpurRoguelike.PlayerBot
 
             var itemsByPower = _LevelView.Items.OrderByDescending(i => CalulateItemPower(i));
 
-            if (CalulateItemPower(playerItem) >= CalulateItemPower(itemsByPower.First()))
+            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First()))
                 return null;
 
             return GoTo(itemsByPower.First().Location);
@@ -220,20 +235,7 @@ namespace SpurRoguelike.PlayerBot
                     );
 
                 if (path == null)
-                {
-                    _PathfindingRetriesCount++;
-
-                    if (_PathfindingRetriesCount == 3)
-                    {
-                        _PathfindingRetriesCount = 0;
-
-                        return null;
-                    }
-
-                    return Turn.None;
-                }
-
-                _PathfindingRetriesCount = 0;
+                    return TryClearPath(location);
 
                 tile = path.First();
             }
@@ -241,8 +243,6 @@ namespace SpurRoguelike.PlayerBot
             {
                 if (_DiscardCache || _CachedPathPointIndex == System.Math.Min(_LevelView.Field.VisibilityWidth, _LevelView.Field.VisibilityHeight) - 1)
                 {
-                    _DiscardCache = false;
-
                     TargetLocation = location;
 
                     _CachedPathPointIndex = 0;
@@ -254,19 +254,12 @@ namespace SpurRoguelike.PlayerBot
 
                     if (_CachedPath == null)
                     {
-                        _PathfindingRetriesCount++;
+                        _DiscardCache = true;
 
-                        if (_PathfindingRetriesCount == 3)
-                        {
-                            _PathfindingRetriesCount = 0;
-
-                            return null;
-                        }
-
-                        return Turn.None;
+                        return TryClearPath(location);
                     }
 
-                    _PathfindingRetriesCount = 0;
+                    _DiscardCache = false;
                 }
 
                 tile = _CachedPath[_CachedPathPointIndex];
@@ -286,11 +279,11 @@ namespace SpurRoguelike.PlayerBot
             List<IEnumerable<AStarNavigator.Tile>> paths = new List<IEnumerable<AStarNavigator.Tile>>();
             foreach (Location location in locations)
             {
-                TargetLocation = locations.First();
+                TargetLocation = location;
 
                 IEnumerable<AStarNavigator.Tile> path = _Navigator.Navigate(
                     new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
-                    new AStarNavigator.Tile(locations.First().X, locations.First().Y)
+                    new AStarNavigator.Tile(location.X, location.Y)
                     );
 
                 if (path != null)
@@ -298,24 +291,52 @@ namespace SpurRoguelike.PlayerBot
             }
 
             if (!paths.Any())
-            {
-                _PathfindingRetriesCount++;
-
-                if (_PathfindingRetriesCount == 3)
-                {
-                    _PathfindingRetriesCount = 0;
-
-                    return null;
-                }
-
-                return Turn.None;
-            }
-
-            _PathfindingRetriesCount = 0;
+                return null;
 
             tile = paths.OrderBy(p => p.Count()).First().First();
 
             return Turn.Step(new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y));
+        }
+
+        private List<Location> _ClearPathAttempts=new List<Location>();
+
+        private Turn TryClearPath(Location location)
+        {
+            if (_ClearPathAttempts.Contains(location))
+                return null;
+
+            _ClearPathAttempts.Add(location);
+
+            IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => IsInStepRange(location, p.Location));
+            IEnumerable<ItemView> items = _LevelView.Items.Where(i => IsInStepRange(location, i.Location));
+            IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => IsInStepRange(location, m.Location));
+
+            Turn turn = null;
+            foreach (HealthPackView pack in packs)
+            {
+                turn = GoTo(pack.Location);
+
+                if (turn != null)
+                    return turn;
+            }
+
+            foreach (ItemView item in items)
+            {
+                turn = GoTo(item.Location);
+
+                if (turn != null)
+                    return turn;
+            }
+
+            foreach (PawnView monster in monsters)
+            {
+                turn = GoTo(monster.Location);
+
+                if (turn != null)
+                    return turn;
+            }
+
+            return null;
         }
 
         private static int CalculateDistance(Location location1, Location location2)
@@ -341,6 +362,27 @@ namespace SpurRoguelike.PlayerBot
         private int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
         {
             return (int)(((float)attacker.TotalAttack / target.Defence) * _BaseDamage * (maxDamage ? 1 : 0.95f));
+        }
+
+        private void CacheWalls()
+        {
+            Location location;
+            for (int x = 0; x < _LevelView.Field.Width; ++x)
+            {
+                for (int y = 0; y < _LevelView.Field.Height; ++y)
+                {
+                    location = new Location(x, y);
+                    if (_LevelView.Field[location] == CellType.Wall && !IsInStepRange(location, _Exit))
+                        CachedWalls[x, y] = true;
+                }
+            }
+
+            CacheLocations[_Player.Location.X, _Player.Location.Y] = true;
+        }
+
+        private static bool IsInStepRange(Location location1, Location location2)
+        {
+            return (location1 - location2).IsStep();
         }
     }
 }

@@ -28,6 +28,9 @@ namespace SpurRoguelike.PlayerBot
             if (location.X < 0 || location.Y < 0 || location.X >= _Context.Level.Field.Width || location.Y >= _Context.Level.Field.Height)
                 return true;
 
+            if (_Context.CachedWalls[location.X, location.Y])
+                return true;
+
             CellType cellType = _Context.Level.Field[location];
 
             if (cellType == CellType.Wall || cellType == CellType.Trap || cellType == CellType.Exit)
