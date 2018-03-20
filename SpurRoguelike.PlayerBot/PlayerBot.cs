@@ -22,6 +22,7 @@ namespace SpurRoguelike.PlayerBot
         private int _PreviousHealth;
         private List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
         private int _CachedPathPointIndex;
+        private Location _CachedPathLastCacheLocation;
         private bool _DiscardCache = true;
         private bool[,] CacheLocations { get; set; }
 
@@ -41,7 +42,10 @@ namespace SpurRoguelike.PlayerBot
             InitializeTurn(levelView);
 
             if (_BeingCareful)
+            {
+                //System.Threading.Thread.Sleep(200);
                 Say(messageReporter, "Being careful.");
+            }
 
             Turn turn = CheckForHealth();
             if (turn != null)
@@ -111,10 +115,13 @@ namespace SpurRoguelike.PlayerBot
                 CachedWalls = new bool[_LevelView.Field.Width, _LevelView.Field.Height];
                 CachedWalls[_Exit.X, _Exit.Y] = true;
                 CacheWalls();
+                _Map.InitializeLevelCache();
             }
 
             if (!CacheLocations[_Player.Location.X, _Player.Location.Y])
                 CacheWalls();
+
+            _Map.InitializeTurnCache();
         }
 
         private Turn CheckForHealth()
@@ -169,7 +176,7 @@ namespace SpurRoguelike.PlayerBot
 
             var itemsByPower = _LevelView.Items.OrderByDescending(i => CalulateItemPower(i));
 
-            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First()))
+            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First())) //TODO Костыль с 0.001f
                 return null;
 
             return GoTo(itemsByPower.First().Location);
@@ -223,7 +230,7 @@ namespace SpurRoguelike.PlayerBot
         private Turn GoTo(Location location)
         {
             AStarNavigator.Tile tile;
-            if (LocationIsVisible(location) || _BeingCareful)
+            if (LocationIsVisible(location) || _BeingCareful) //TODO _BeingCareful - костыль?
             {
                 _DiscardCache = true;
 
@@ -241,7 +248,8 @@ namespace SpurRoguelike.PlayerBot
             }
             else
             {
-                if (_DiscardCache || _CachedPathPointIndex == System.Math.Min(_LevelView.Field.VisibilityWidth, _LevelView.Field.VisibilityHeight) - 1)
+                Offset offset = _Player.Location - _CachedPathLastCacheLocation;
+                if (_DiscardCache || System.Math.Abs(offset.XOffset) == _LevelView.Field.VisibilityWidth - 1 || System.Math.Abs(offset.YOffset) == _LevelView.Field.VisibilityHeight - 1)
                 {
                     TargetLocation = location;
 
@@ -260,6 +268,7 @@ namespace SpurRoguelike.PlayerBot
                     }
 
                     _DiscardCache = false;
+                    _CachedPathLastCacheLocation = _Player.Location;
                 }
 
                 tile = _CachedPath[_CachedPathPointIndex];
@@ -298,7 +307,7 @@ namespace SpurRoguelike.PlayerBot
             return Turn.Step(new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y));
         }
 
-        private List<Location> _ClearPathAttempts=new List<Location>();
+        private List<Location> _ClearPathAttempts = new List<Location>();
 
         private Turn TryClearPath(Location location)
         {
@@ -372,7 +381,7 @@ namespace SpurRoguelike.PlayerBot
                 for (int y = 0; y < _LevelView.Field.Height; ++y)
                 {
                     location = new Location(x, y);
-                    if (_LevelView.Field[location] == CellType.Wall && !IsInStepRange(location, _Exit))
+                    if (_LevelView.Field[location] == CellType.Wall && !IsInStepRange(location, _Exit)) // TODO _Exit - для уровня с боссом
                         CachedWalls[x, y] = true;
                 }
             }
