@@ -9,6 +9,8 @@ namespace SpurRoguelike.PlayerBot
 {
     class Map : IBlockedProvider, INeighborProvider, IDistanceAlgorithm
     {
+        private const int DefaultCellWeight = 1;
+        private const int HiddenCellsWeight = 10;
         private IMapPathfindingContext _Context;
         private float?[,] _CachedWallsWeights;
         private List<Location> _CachedTraps;
@@ -83,7 +85,7 @@ namespace SpurRoguelike.PlayerBot
             if (_Context.ApplyWeights)
                 return CalculateWeight(ConvertToLocation(to));
 
-            return IsLocationHidden(ConvertToLocation(to)) ? 10 : 1; //TODO Считать при весах тоже?
+            return IsLocationHidden(ConvertToLocation(to)) ? HiddenCellsWeight : DefaultCellWeight; //TODO Считать при весах тоже?
         }
 
         #endregion
@@ -95,15 +97,32 @@ namespace SpurRoguelike.PlayerBot
 
         private float CalculateWeight(Location location)
         {
-            float result = 1;
+            float result = DefaultCellWeight;
 
-            result /= 0.25f * GetTrapCountInRange(location, 1) + 1; //С 0.25 последний
+            ApplyTrapsWeight(location, ref result);
+            ApplyHealthPacksWeight(location, ref result);
+            ApplyWallsWeight(location, ref result);
+            ApplyMonstersWeight(location, ref result);
 
+            return result;
+        }
+
+        private void ApplyTrapsWeight(Location location, ref float weight)
+        {
+            weight /= 0.25f * GetTrapCountInRange(location, 1) + 1; //С 0.25 последний
+        }
+
+        private void ApplyHealthPacksWeight(Location location, ref float result)
+        {
             int hpsInOneRange = GetHealthPackCountInRange(location, 1);
             int hpsInTwoRange = GetHealthPackCountInRange(location, 2);
+
             result /= 0.5f * (hpsInTwoRange - hpsInOneRange) + 1;
             result /= hpsInOneRange + 1;
+        }
 
+        private void ApplyWallsWeight(Location location, ref float result)
+        {
             if (_CachedWallsWeights[location.X, location.Y].HasValue)
             {
                 result *= _CachedWallsWeights[location.X, location.Y].Value;
@@ -120,14 +139,15 @@ namespace SpurRoguelike.PlayerBot
 
                 result *= wallsCoef;
             }
+        }
 
-
+        private void ApplyMonstersWeight(Location location, ref float result)
+        {
             int monstersInOneRange = GetMonsterCountInRange(location, 1);
             int monstersInTwoRange = GetMonsterCountInRange(location, 2);
+
             result *= 0.5f * (monstersInTwoRange - monstersInOneRange) + 1; //1.5?
             result *= monstersInOneRange + 1; //1.5?
-
-            return result;
         }
 
         private Location ConvertToLocation(Tile tile)

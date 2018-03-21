@@ -3,6 +3,7 @@ using System.Linq;
 using SpurRoguelike.Core;
 using SpurRoguelike.Core.Primitives;
 using SpurRoguelike.Core.Views;
+using SpurRoguelike.PlayerBot.Extensions;
 
 namespace SpurRoguelike.PlayerBot
 {
@@ -145,7 +146,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn KillWeakenedMonster()
         {
-            var monsters = _LevelView.Monsters.Select(m => new { Monster = m, Distance = CalculateDistance(_Player.Location, m.Location) }).OrderBy(m => m.Distance);
+            var monsters = _LevelView.Monsters.Select(m => new { Monster = m, Distance = _Player.Location.CalculateDistance(m.Location) }).OrderBy(m => m.Distance);
 
             if (!monsters.Any())
                 return null;
@@ -166,7 +167,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn CheckForBestItem()
         {
-            var itemsByDistance = _LevelView.Items.OrderBy(p => CalculateDistance(_Player.Location, p.Location));
+            var itemsByDistance = _LevelView.Items.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
 
             if (!itemsByDistance.Any())
                 return null;
@@ -184,7 +185,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn GrindMonsters()
         {
-            var monsters = _LevelView.Monsters.OrderBy(m => CalculateDistance(_Player.Location, m.Location));
+            var monsters = _LevelView.Monsters.OrderBy(m => _Player.Location.CalculateDistance(m.Location));
 
             if (!monsters.Any())
                 return null;
@@ -216,7 +217,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn GoToClosestHealthPack()
         {
-            var packs = _LevelView.HealthPacks.OrderBy(p => CalculateDistance(_Player.Location, p.Location));
+            var packs = _LevelView.HealthPacks.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
 
             if (!packs.Any())
                 return null;
@@ -316,9 +317,9 @@ namespace SpurRoguelike.PlayerBot
 
             _ClearPathAttempts.Add(location);
 
-            IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => IsInStepRange(location, p.Location));
-            IEnumerable<ItemView> items = _LevelView.Items.Where(i => IsInStepRange(location, i.Location));
-            IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => IsInStepRange(location, m.Location));
+            IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => location.IsInStepRange(p.Location));
+            IEnumerable<ItemView> items = _LevelView.Items.Where(i => location.IsInStepRange(i.Location));
+            IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => location.IsInStepRange(m.Location));
 
             Turn turn = null;
             foreach (HealthPackView pack in packs)
@@ -346,11 +347,6 @@ namespace SpurRoguelike.PlayerBot
             }
 
             return null;
-        }
-
-        private static int CalculateDistance(Location location1, Location location2)
-        {
-            return System.Math.Abs(location1.X - location2.X) + System.Math.Abs(location1.Y - location2.Y);
         }
 
         private static float CalulateItemPower(ItemView item)
@@ -381,17 +377,12 @@ namespace SpurRoguelike.PlayerBot
                 for (int y = 0; y < _LevelView.Field.Height; ++y)
                 {
                     location = new Location(x, y);
-                    if (_LevelView.Field[location] == CellType.Wall && !IsInStepRange(location, _Exit)) // TODO _Exit - для уровня с боссом
+                    if (_LevelView.Field[location] == CellType.Wall && !location.IsInStepRange(_Exit)) // TODO _Exit - для уровня с боссом
                         CachedWalls[x, y] = true;
                 }
             }
 
             CacheLocations[_Player.Location.X, _Player.Location.Y] = true;
-        }
-
-        private static bool IsInStepRange(Location location1, Location location2)
-        {
-            return (location1 - location2).IsStep();
         }
     }
 }
