@@ -4,13 +4,14 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{88D8916A-09A3-4490-B008-16C41C7B750E}</ProjectGuid>
+    <ProjectGuid>{94738466-A026-444D-B318-24A78723FEC0}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SpurRoguelike.PlayerBot</RootNamespace>
-    <AssemblyName>SpurRoguelike.PlayerBot</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <RootNamespace>AStarNavigator</RootNamespace>
+    <AssemblyName>AStarNavigator</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -34,28 +35,21 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BotReporter.cs" />
-    <Compile Include="IMapPathfindingContext.cs" />
-    <Compile Include="LocationExtension.cs" />
-    <Compile Include="Map.cs" />
-    <Compile Include="PlayerBot.cs" />
+    <Compile Include="Algorithms\IDistanceAlgorithm.cs" />
+    <Compile Include="Algorithms\ManhattanHeuristicAlgorithm.cs" />
+    <Compile Include="ITileNavigator.cs" />
+    <Compile Include="Providers\EmptyBlockedProvider.cs" />
+    <Compile Include="Providers\IBlockedProvider.cs" />
+    <Compile Include="Providers\INeighborProvider.cs" />
+    <Compile Include="Providers\DiagonalNeighborProvider.cs" />
+    <Compile Include="Algorithms\PythagorasAlgorithm.cs" />
+    <Compile Include="Tile.cs" />
+    <Compile Include="TileNavigator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\AStarNavigator\AStarNavigator.csproj">
-      <Project>{94738466-a026-444d-b318-24a78723fec0}</Project>
-      <Name>AStarNavigator</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\SpurRoguelike.Core\SpurRoguelike.Core.csproj">
-      <Project>{a9981d1c-3429-4729-b7f7-7839cc30be00}</Project>
-      <Name>SpurRoguelike.Core</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -238,7 +238,7 @@ namespace SpurRoguelike.PlayerBot
         private Turn GoTo(Location location)
         {
             AStarNavigator.Tile tile;
-            if (LocationIsVisible(location) || _BeingCareful) //TODO _BeingCareful - костыль?
+            if (LocationIsVisible(location) || _BeingCareful)
             {
                 _DiscardCache = true;
 
