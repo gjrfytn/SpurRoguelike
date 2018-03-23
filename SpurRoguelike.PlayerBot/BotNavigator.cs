@@ -1,76 +1,111 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using SpurRoguelike.Core.Primitives;
+using SpurRoguelike.Core.Views;
+using SpurRoguelike.PlayerBot.Extensions;
 
 namespace SpurRoguelike.PlayerBot
 {
-    class BotNavigator
+    class BotNavigator : IMapNavigationContext
     {
+        private readonly Map _Map;
         private readonly AStarNavigator.ITileNavigator _Navigator;
-        private Location _PlayerLocation;
 
-        public BotNavigator(AStarNavigator.ITileNavigator navigator)
+        private Location _PlayerLocation;
+        private int _VisibilityWidth;
+        private int _VisibilityHeight;
+
+        private bool _DiscardCache = true;
+        private List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
+        private int _CachedPathPointIndex;
+        private Location _CachedPathLastCacheLocation;
+
+        private List<Location> _ClearPathAttempts = new List<Location>();
+
+        public BotNavigator()
         {
-            _Navigator = navigator;
+            _Map = new Map(this);
+            _Navigator = new AStarNavigator.TileNavigator(_Map, _Map, _Map, new AStarNavigator.Algorithms.ManhattanHeuristicAlgorithm());
         }
 
-        public void InitializeTurn(Location playerLocation)
+        #region IPathfindingContext
+
+        public Location TargetLocation { get; set; }
+
+        public bool ApplyWeights { get; set; }
+
+        #endregion
+
+        public void InitializeLevel(LevelView level, Location exit)
+        {
+            _VisibilityWidth = level.Field.VisibilityWidth;
+            _VisibilityHeight = level.Field.VisibilityHeight;
+
+            _Map.InitializeLevel(level, exit);
+        }
+
+        public void InitializeTurn(LevelView level, Location playerLocation, bool applyWeights)
         {
             _PlayerLocation = playerLocation;
+            ApplyWeights = applyWeights;
+
+            _ClearPathAttempts.Clear();
+
+            _Map.InitializeTurn(level);
         }
 
-        public Turn GoTo(Location location, PlayerBot bot)
+        public Turn GoTo(Location location)
         {
             AStarNavigator.Tile tile;
-            if (bot.LocationIsVisible(location) || bot._BeingCareful)
+            if (_Map.LocationIsVisible(location) || ApplyWeights)
             {
-                bot._DiscardCache = true;
+                _DiscardCache = true;
 
-                IEnumerable<AStarNavigator.Tile> path = Navigate(location, bot);
+                IEnumerable<AStarNavigator.Tile> path = Navigate(location);
 
                 if (path == null)
-                    return bot.TryClearPath(location);
+                    return TryClearPath(location);
 
                 tile = path.First();
             }
             else
             {
-                Offset offset = _PlayerLocation - bot._CachedPathLastCacheLocation;
-                if (bot._DiscardCache || System.Math.Abs(offset.XOffset) == bot._LevelView.Field.VisibilityWidth - 1 || System.Math.Abs(offset.YOffset) == bot._LevelView.Field.VisibilityHeight - 1)
+                Offset offset = _PlayerLocation - _CachedPathLastCacheLocation;
+                if (_DiscardCache || System.Math.Abs(offset.XOffset) == _VisibilityWidth - 1 || System.Math.Abs(offset.YOffset) == _VisibilityHeight - 1)
                 {
-                    bot._CachedPathPointIndex = 0;
+                    _CachedPathPointIndex = 0;
 
-                    bot._CachedPath = Navigate(location, bot)?.ToList();
+                    _CachedPath = Navigate(location)?.ToList();
 
-                    if (bot._CachedPath == null)
+                    if (_CachedPath == null)
                     {
-                        bot._DiscardCache = true;
+                        _DiscardCache = true;
 
-                        return bot.TryClearPath(location);
+                        return TryClearPath(location);
                     }
 
-                    bot._DiscardCache = false;
-                    bot._CachedPathLastCacheLocation = _PlayerLocation;
+                    _DiscardCache = false;
+                    _CachedPathLastCacheLocation = _PlayerLocation;
                 }
 
-                tile = bot._CachedPath[bot._CachedPathPointIndex];
+                tile = _CachedPath[_CachedPathPointIndex];
 
-                bot._CachedPathPointIndex++;
+                _CachedPathPointIndex++;
             }
 
             return GetStepTurn(tile);
         }
 
-        public Turn GoToClosest(IEnumerable<Location> locations, PlayerBot bot)
+        public Turn GoToClosest(IEnumerable<Location> locations)
         {
             AStarNavigator.Tile tile;
 
-            bot._DiscardCache = true;
+            _DiscardCache = true;
 
             List<IEnumerable<AStarNavigator.Tile>> paths = new List<IEnumerable<AStarNavigator.Tile>>();
             foreach (Location location in locations)
             {
-                IEnumerable<AStarNavigator.Tile> path = Navigate(location, bot);
+                IEnumerable<AStarNavigator.Tile> path = Navigate(location);
 
                 if (path != null)
                     paths.Add(path);
@@ -84,9 +119,9 @@ namespace SpurRoguelike.PlayerBot
             return GetStepTurn(tile);
         }
 
-        private IEnumerable<AStarNavigator.Tile> Navigate(Location location, PlayerBot bot)
+        private IEnumerable<AStarNavigator.Tile> Navigate(Location location)
         {
-            bot.TargetLocation = location;
+            TargetLocation = location;
 
             return _Navigator.Navigate(
                 new AStarNavigator.Tile(_PlayerLocation.X, _PlayerLocation.Y),
@@ -97,6 +132,44 @@ namespace SpurRoguelike.PlayerBot
         private Turn GetStepTurn(AStarNavigator.Tile tile)
         {
             return Turn.Step(new Offset((int)tile.X - _PlayerLocation.X, (int)tile.Y - _PlayerLocation.Y));
+        }
+
+        private Turn TryClearPath(Location location)
+        {
+            if (_ClearPathAttempts.Contains(location))
+                return null;
+
+            _ClearPathAttempts.Add(location);
+
+            Turn turn = null;
+            IEnumerable<Location> packs = _Map.HealthPacks.Where(p => location.IsInStepRange(p));
+            foreach (Location pack in packs)
+            {
+                turn = GoTo(pack);
+
+                if (turn != null)
+                    return turn;
+            }
+
+            IEnumerable<Location> items = _Map.Items.Where(i => location.IsInStepRange(i));
+            foreach (Location item in items)
+            {
+                turn = GoTo(item);
+
+                if (turn != null)
+                    return turn;
+            }
+
+            IEnumerable<Location> monsters = _Map.Monsters.Where(m => location.IsInStepRange(m));
+            foreach (Location monster in monsters)
+            {
+                turn = GoTo(monster);
+
+                if (turn != null)
+                    return turn;
+            }
+
+            return null;
         }
     }
 }

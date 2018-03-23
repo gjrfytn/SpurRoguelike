@@ -42,7 +42,7 @@
   <ItemGroup>
     <Compile Include="BotNavigator.cs" />
     <Compile Include="BotReporter.cs" />
-    <Compile Include="IMapPathfindingContext.cs" />
+    <Compile Include="IMapNavigationContext.cs" />
     <Compile Include="LocationExtension.cs" />
     <Compile Include="Map.cs" />
     <Compile Include="PlayerBot.cs" />

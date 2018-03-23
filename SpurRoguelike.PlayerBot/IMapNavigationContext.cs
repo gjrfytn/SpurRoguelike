@@ -3,9 +3,8 @@ using SpurRoguelike.Core.Views;
 
 namespace SpurRoguelike.PlayerBot
 {
-    public interface IMapPathfindingContext
+    public interface IMapNavigationContext
     {
-        LevelView Level { get; }
         Location TargetLocation { get; }
         bool ApplyWeights { get; }
     }

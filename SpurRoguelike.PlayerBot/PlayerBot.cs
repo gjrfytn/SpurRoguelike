@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using SpurRoguelike.Core;
 using SpurRoguelike.Core.Primitives;
 using SpurRoguelike.Core.Views;
@@ -7,33 +6,24 @@ using SpurRoguelike.PlayerBot.Extensions;
 
 namespace SpurRoguelike.PlayerBot
 {
-    public class PlayerBot : IPlayerController, IMapPathfindingContext
+    public class PlayerBot : IPlayerController
     {
         private const int _PlayerMaxHealth = 100;
         private const int _BaseDamage = 10;
 
-        public LevelView _LevelView;
-        public PawnView _Player;
+        private LevelView _LevelView;
+        private PawnView _Player;
         private Location _Exit;
 
-        private readonly Map _Map;
         private BotReporter _Reporter;
         private BotNavigator _Navigator;
 
         private int _PreviousHealth;
-        public List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
-        public int _CachedPathPointIndex;
-        public Location _CachedPathLastCacheLocation;
-        public bool _DiscardCache = true;
-
-        public bool _BeingCareful;
+        private bool _BeingCareful;
 
         public PlayerBot()
         {
-            _Map = new Map(this);
-            _Navigator = new BotNavigator(
-                new AStarNavigator.TileNavigator(_Map, _Map, _Map, new AStarNavigator.Algorithms.ManhattanHeuristicAlgorithm())
-                );
+            _Navigator = new BotNavigator();
         }
 
         #region IPlayerController
@@ -89,39 +79,28 @@ namespace SpurRoguelike.PlayerBot
 
         #endregion
 
-        #region IPathfindingContext
-
-        public LevelView Level => _LevelView;
-
-        public Location TargetLocation { get; set; }
-
-        public bool ApplyWeights => _BeingCareful;
-
-        #endregion
-
-        private void InitializeTurn(LevelView levelView, IMessageReporter messageReporter)
+        private void InitializeLevel(LevelView level, IMessageReporter messageReporter)
         {
-            _LevelView = levelView;
-            _Player = levelView.Player;
+            _Reporter = new BotReporter(messageReporter);
+
+            _Navigator.InitializeLevel(level, _Exit);
+        }
+
+        private void InitializeTurn(LevelView level, IMessageReporter messageReporter)
+        {
+            _LevelView = level;
+            _Player = level.Player;
 
             _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
-            _ClearPathAttempts.Clear();
 
             Location exit = _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
             if (_Exit != exit)
             {
                 _Exit = exit;
-                InitializeLevel(messageReporter);
+                InitializeLevel(level, messageReporter);
             }
 
-            _Map.InitializeTurn();
-            _Navigator.InitializeTurn(_Player.Location);
-        }
-
-        private void InitializeLevel(IMessageReporter messageReporter)
-        {
-            _Map.InitializeLevel(_Exit);
-            _Reporter = new BotReporter(messageReporter);
+            _Navigator.InitializeTurn(_LevelView, _Player.Location, _BeingCareful);
         }
 
         private Turn CheckForHealth()
@@ -172,14 +151,14 @@ namespace SpurRoguelike.PlayerBot
                 return null;
 
             if (!_Player.TryGetEquippedItem(out ItemView playerItem))
-                return _Navigator.GoTo(itemsByDistance.First().Location, this);
+                return _Navigator.GoTo(itemsByDistance.First().Location);
 
             var itemsByPower = _LevelView.Items.OrderByDescending(i => CalulateItemPower(i));
 
             if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First())) //TODO Костыль с 0.001f
                 return null;
 
-            return _Navigator.GoTo(itemsByPower.First().Location, this);
+            return _Navigator.GoTo(itemsByPower.First().Location);
         }
 
         private Turn GrindMonsters()
@@ -194,7 +173,7 @@ namespace SpurRoguelike.PlayerBot
             if (closestMonster.Location.IsInRange(_Player.Location, 1))
                 return Turn.Attack(closestMonster.Location - _Player.Location);
 
-            return _Navigator.GoTo(closestMonster.Location, this);
+            return _Navigator.GoTo(closestMonster.Location);
         }
 
         private Turn GoToExit()
@@ -206,7 +185,7 @@ namespace SpurRoguelike.PlayerBot
             if (turn != null)
                 return turn;
 
-            return _Navigator.GoTo(_Exit, this);
+            return _Navigator.GoTo(_Exit);
         }
 
         private Turn Panic()
@@ -222,59 +201,14 @@ namespace SpurRoguelike.PlayerBot
                 return null;
 
             if (_BeingCareful)
-                return _Navigator.GoToClosest(packs.Take(3).Select(p => p.Location), this);
+                return _Navigator.GoToClosest(packs.Take(3).Select(p => p.Location));
 
-            return _Navigator.GoTo(packs.First().Location, this);
-        }
-
-        private List<Location> _ClearPathAttempts = new List<Location>();
-
-        public Turn TryClearPath(Location location)
-        {
-            if (_ClearPathAttempts.Contains(location))
-                return null;
-
-            _ClearPathAttempts.Add(location);
-
-            Turn turn = null;
-            IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => location.IsInStepRange(p.Location));
-            foreach (HealthPackView pack in packs)
-            {
-                turn = _Navigator.GoTo(pack.Location, this);
-
-                if (turn != null)
-                    return turn;
-            }
-
-            IEnumerable<ItemView> items = _LevelView.Items.Where(i => location.IsInStepRange(i.Location));
-            foreach (ItemView item in items)
-            {
-                turn = _Navigator.GoTo(item.Location, this);
-
-                if (turn != null)
-                    return turn;
-            }
-
-            IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => location.IsInStepRange(m.Location));
-            foreach (PawnView monster in monsters)
-            {
-                turn = _Navigator.GoTo(monster.Location, this);
-
-                if (turn != null)
-                    return turn;
-            }
-
-            return null;
+            return _Navigator.GoTo(packs.First().Location);
         }
 
         private static float CalulateItemPower(ItemView item)
         {
             return item.AttackBonus + item.DefenceBonus - (System.Math.Abs(item.AttackBonus - item.DefenceBonus) / 1000f);
-        }
-
-        public bool LocationIsVisible(Location location)
-        {
-            return _LevelView.Field[location] != CellType.Hidden;
         }
 
         private int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
