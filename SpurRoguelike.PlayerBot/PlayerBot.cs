@@ -213,7 +213,7 @@ namespace SpurRoguelike.PlayerBot
             return item.AttackBonus + item.DefenceBonus - (System.Math.Abs(item.AttackBonus - item.DefenceBonus) / 1000f);
         }
 
-        private int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
+        private static int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
         {
             return (int)(((float)attacker.TotalAttack / target.Defence) * _BaseDamage * (maxDamage ? 1 : 0.95f));
         }

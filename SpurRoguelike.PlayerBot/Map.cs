@@ -194,7 +194,7 @@ namespace SpurRoguelike.PlayerBot
             result *= monstersInOneRange + 1; //1.5?
         }
 
-        private Location ConvertToLocation(Tile tile)
+        private static Location ConvertToLocation(Tile tile)
         {
             return new Location((int)tile.X, (int)tile.Y);
         }
