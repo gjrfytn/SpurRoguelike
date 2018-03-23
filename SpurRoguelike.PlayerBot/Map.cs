@@ -9,8 +9,9 @@ namespace SpurRoguelike.PlayerBot
 {
     class Map : IBlockedProvider, INeighborProvider, IDistanceAlgorithm
     {
-        private const int DefaultCellWeight = 1;
-        private const int HiddenCellsWeight = 10;
+        private const int _DefaultCellWeight = 1;
+        private const int _HiddenCellsWeight = 10;
+
         private IMapPathfindingContext _Context;
         private float?[,] _CachedWallsWeights;
         private List<Location> _CachedTraps;
@@ -85,7 +86,7 @@ namespace SpurRoguelike.PlayerBot
             if (_Context.ApplyWeights)
                 return CalculateWeight(ConvertToLocation(to));
 
-            return IsLocationHidden(ConvertToLocation(to)) ? HiddenCellsWeight : DefaultCellWeight; //TODO Считать при весах тоже?
+            return IsLocationHidden(ConvertToLocation(to)) ? _HiddenCellsWeight : _DefaultCellWeight;
         }
 
         #endregion
@@ -97,7 +98,7 @@ namespace SpurRoguelike.PlayerBot
 
         private float CalculateWeight(Location location)
         {
-            float result = DefaultCellWeight;
+            float result = _DefaultCellWeight;
 
             ApplyTrapsWeight(location, ref result);
             ApplyHealthPacksWeight(location, ref result);

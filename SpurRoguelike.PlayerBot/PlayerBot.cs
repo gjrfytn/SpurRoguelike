@@ -131,9 +131,6 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn CheckForHealth()
         {
-            //if (_Player.Health == _PlayerMaxHealth)
-            //    return null;
-
             if (_PreviousHealth >= _Player.Health)
                 return GoToClosestHealthPack();
 
@@ -324,11 +321,8 @@ namespace SpurRoguelike.PlayerBot
 
             _ClearPathAttempts.Add(location);
 
-            IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => location.IsInStepRange(p.Location));
-            IEnumerable<ItemView> items = _LevelView.Items.Where(i => location.IsInStepRange(i.Location));
-            IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => location.IsInStepRange(m.Location));
-
             Turn turn = null;
+            IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => location.IsInStepRange(p.Location));
             foreach (HealthPackView pack in packs)
             {
                 turn = GoTo(pack.Location);
@@ -337,6 +331,7 @@ namespace SpurRoguelike.PlayerBot
                     return turn;
             }
 
+            IEnumerable<ItemView> items = _LevelView.Items.Where(i => location.IsInStepRange(i.Location));
             foreach (ItemView item in items)
             {
                 turn = GoTo(item.Location);
@@ -345,6 +340,7 @@ namespace SpurRoguelike.PlayerBot
                     return turn;
             }
 
+            IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => location.IsInStepRange(m.Location));
             foreach (PawnView monster in monsters)
             {
                 turn = GoTo(monster.Location);
