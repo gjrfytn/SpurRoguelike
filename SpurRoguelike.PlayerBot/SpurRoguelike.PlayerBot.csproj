@@ -40,6 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BotNavigator.cs" />
     <Compile Include="BotReporter.cs" />
     <Compile Include="IMapPathfindingContext.cs" />
     <Compile Include="LocationExtension.cs" />

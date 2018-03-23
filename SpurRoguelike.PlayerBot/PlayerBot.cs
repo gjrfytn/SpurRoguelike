@@ -12,28 +12,29 @@ namespace SpurRoguelike.PlayerBot
         private const int _PlayerMaxHealth = 100;
         private const int _BaseDamage = 10;
 
-        private readonly AStarNavigator.TileNavigator _Navigator;
-
-        private LevelView _LevelView;
-        private PawnView _Player;
+        public LevelView _LevelView;
+        public PawnView _Player;
         private Location _Exit;
 
         private readonly Map _Map;
         private BotReporter _Reporter;
+        private BotNavigator _Navigator;
 
         private int _PreviousHealth;
-        private List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
-        private int _CachedPathPointIndex;
-        private Location _CachedPathLastCacheLocation;
-        private bool _DiscardCache = true;
+        public List<AStarNavigator.Tile> _CachedPath = new List<AStarNavigator.Tile>();
+        public int _CachedPathPointIndex;
+        public Location _CachedPathLastCacheLocation;
+        public bool _DiscardCache = true;
         private bool[,] CacheLocations { get; set; }
 
-        private bool _BeingCareful;
+        public bool _BeingCareful;
 
         public PlayerBot()
         {
             _Map = new Map(this);
-            _Navigator = new AStarNavigator.TileNavigator(_Map, _Map, _Map, new AStarNavigator.Algorithms.ManhattanHeuristicAlgorithm());
+            _Navigator = new BotNavigator(
+                new AStarNavigator.TileNavigator(_Map, _Map, _Map, new AStarNavigator.Algorithms.ManhattanHeuristicAlgorithm())
+                );
         }
 
         #region IPlayerController
@@ -116,7 +117,8 @@ namespace SpurRoguelike.PlayerBot
             if (!CacheLocations[_Player.Location.X, _Player.Location.Y])
                 CacheWalls();
 
-            _Map.InitializeTurnCache();
+            _Map.InitializeTurn();
+            _Navigator.InitializeTurn(_Player.Location);
         }
 
         private void InitializeLevel(IMessageReporter messageReporter)
@@ -125,7 +127,7 @@ namespace SpurRoguelike.PlayerBot
             CachedWalls = new bool[_LevelView.Field.Width, _LevelView.Field.Height];
             CachedWalls[_Exit.X, _Exit.Y] = true;
             CacheWalls();
-            _Map.InitializeLevelCache();
+            _Map.InitializeLevel();
             _Reporter = new BotReporter(messageReporter);
         }
 
@@ -177,14 +179,14 @@ namespace SpurRoguelike.PlayerBot
                 return null;
 
             if (!_Player.TryGetEquippedItem(out ItemView playerItem))
-                return GoTo(itemsByDistance.First().Location);
+                return _Navigator.GoTo(itemsByDistance.First().Location, this);
 
             var itemsByPower = _LevelView.Items.OrderByDescending(i => CalulateItemPower(i));
 
             if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First())) //TODO Костыль с 0.001f
                 return null;
 
-            return GoTo(itemsByPower.First().Location);
+            return _Navigator.GoTo(itemsByPower.First().Location, this);
         }
 
         private Turn GrindMonsters()
@@ -199,7 +201,7 @@ namespace SpurRoguelike.PlayerBot
             if (closestMonster.Location.IsInRange(_Player.Location, 1))
                 return Turn.Attack(closestMonster.Location - _Player.Location);
 
-            return GoTo(closestMonster.Location);
+            return _Navigator.GoTo(closestMonster.Location, this);
         }
 
         private Turn GoToExit()
@@ -211,7 +213,7 @@ namespace SpurRoguelike.PlayerBot
             if (turn != null)
                 return turn;
 
-            return GoTo(_Exit);
+            return _Navigator.GoTo(_Exit, this);
         }
 
         private Turn Panic()
@@ -227,94 +229,14 @@ namespace SpurRoguelike.PlayerBot
                 return null;
 
             if (_BeingCareful)
-                return GoToClosest(packs.Take(3).Select(p => p.Location));
+                return _Navigator.GoToClosest(packs.Take(3).Select(p => p.Location), this);
 
-            return GoTo(packs.First().Location);
-        }
-
-        private Turn GoTo(Location location)
-        {
-            AStarNavigator.Tile tile;
-            if (LocationIsVisible(location) || _BeingCareful)
-            {
-                _DiscardCache = true;
-
-                IEnumerable<AStarNavigator.Tile> path = Navigate(location);
-
-                if (path == null)
-                    return TryClearPath(location);
-
-                tile = path.First();
-            }
-            else
-            {
-                Offset offset = _Player.Location - _CachedPathLastCacheLocation;
-                if (_DiscardCache || System.Math.Abs(offset.XOffset) == _LevelView.Field.VisibilityWidth - 1 || System.Math.Abs(offset.YOffset) == _LevelView.Field.VisibilityHeight - 1)
-                {
-                    _CachedPathPointIndex = 0;
-
-                    _CachedPath = Navigate(location)?.ToList();
-
-                    if (_CachedPath == null)
-                    {
-                        _DiscardCache = true;
-
-                        return TryClearPath(location);
-                    }
-
-                    _DiscardCache = false;
-                    _CachedPathLastCacheLocation = _Player.Location;
-                }
-
-                tile = _CachedPath[_CachedPathPointIndex];
-
-                _CachedPathPointIndex++;
-            }
-
-            return GetStepTurn(tile);
-        }
-
-        private Turn GoToClosest(IEnumerable<Location> locations)
-        {
-            AStarNavigator.Tile tile;
-
-            _DiscardCache = true;
-
-            List<IEnumerable<AStarNavigator.Tile>> paths = new List<IEnumerable<AStarNavigator.Tile>>();
-            foreach (Location location in locations)
-            {
-                IEnumerable<AStarNavigator.Tile> path = Navigate(location);
-
-                if (path != null)
-                    paths.Add(path);
-            }
-
-            if (!paths.Any())
-                return null;
-
-            tile = paths.OrderBy(p => p.Count()).First().First();
-
-            return GetStepTurn(tile);
-        }
-
-        private Turn GetStepTurn(AStarNavigator.Tile tile)
-        {
-            return Turn.Step(new Offset((int)tile.X - _Player.Location.X, (int)tile.Y - _Player.Location.Y));
-        }
-
-        private IEnumerable<AStarNavigator.Tile> Navigate(Location location)
-        {
-            TargetLocation = location;
-
-            return _Navigator.Navigate(
-                new AStarNavigator.Tile(_Player.Location.X, _Player.Location.Y),
-                new AStarNavigator.Tile(location.X, location.Y)
-                );
+            return _Navigator.GoTo(packs.First().Location, this);
         }
 
         private List<Location> _ClearPathAttempts = new List<Location>();
 
-        private Turn TryClearPath(Location location)
+        public Turn TryClearPath(Location location)
         {
             if (_ClearPathAttempts.Contains(location))
                 return null;
@@ -325,7 +247,7 @@ namespace SpurRoguelike.PlayerBot
             IEnumerable<HealthPackView> packs = _LevelView.HealthPacks.Where(p => location.IsInStepRange(p.Location));
             foreach (HealthPackView pack in packs)
             {
-                turn = GoTo(pack.Location);
+                turn = _Navigator.GoTo(pack.Location, this);
 
                 if (turn != null)
                     return turn;
@@ -334,7 +256,7 @@ namespace SpurRoguelike.PlayerBot
             IEnumerable<ItemView> items = _LevelView.Items.Where(i => location.IsInStepRange(i.Location));
             foreach (ItemView item in items)
             {
-                turn = GoTo(item.Location);
+                turn = _Navigator.GoTo(item.Location, this);
 
                 if (turn != null)
                     return turn;
@@ -343,7 +265,7 @@ namespace SpurRoguelike.PlayerBot
             IEnumerable<PawnView> monsters = _LevelView.Monsters.Where(m => location.IsInStepRange(m.Location));
             foreach (PawnView monster in monsters)
             {
-                turn = GoTo(monster.Location);
+                turn = _Navigator.GoTo(monster.Location, this);
 
                 if (turn != null)
                     return turn;
@@ -357,7 +279,7 @@ namespace SpurRoguelike.PlayerBot
             return item.AttackBonus + item.DefenceBonus - (System.Math.Abs(item.AttackBonus - item.DefenceBonus) / 1000f);
         }
 
-        private bool LocationIsVisible(Location location)
+        public bool LocationIsVisible(Location location)
         {
             return _LevelView.Field[location] != CellType.Hidden;
         }

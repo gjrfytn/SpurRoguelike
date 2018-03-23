@@ -24,7 +24,7 @@ namespace SpurRoguelike.PlayerBot
             _Context = context;
         }
 
-        public void InitializeTurnCache()
+        public void InitializeTurn()
         {
             _CachedTraps = _Context.Level.Field.GetCellsOfType(CellType.Trap).ToList();
             _CachedHealthPacks = _Context.Level.HealthPacks.Select(p => p.Location).ToList();
@@ -32,7 +32,7 @@ namespace SpurRoguelike.PlayerBot
             _CachedWalls = _Context.Level.Field.GetCellsOfType(CellType.Wall).ToList();
         }
 
-        public void InitializeLevelCache()
+        public void InitializeLevel()
         {
             _CachedWallsWeights = new float?[_Context.Level.Field.Width, _Context.Level.Field.Height];
         }
