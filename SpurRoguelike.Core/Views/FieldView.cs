@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using SpurRoguelike.Core.Primitives;
 
 namespace SpurRoguelike.Core.Views
@@ -44,8 +45,15 @@ namespace SpurRoguelike.Core.Views
 
         public IEnumerable<Location> GetCellsOfType(CellType type)
         {
-            return field?.GetCellsOfType(type);
+            for (int i = 0; i < Width; i++)
+            for (int j = 0; j < Height; j++)
+            {
+                var location = new Location(i, j);
+                if (this[location] == type)
+                    yield return location;
+            }
         }
+
         public bool HasValue => field != null;
 
         private readonly Field field;
