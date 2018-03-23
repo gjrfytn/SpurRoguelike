@@ -25,7 +25,6 @@ namespace SpurRoguelike.PlayerBot
         public int _CachedPathPointIndex;
         public Location _CachedPathLastCacheLocation;
         public bool _DiscardCache = true;
-        private bool[,] CacheLocations { get; set; }
 
         public bool _BeingCareful;
 
@@ -98,24 +97,22 @@ namespace SpurRoguelike.PlayerBot
 
         public bool ApplyWeights => _BeingCareful;
 
-        public bool[,] CachedWalls { get; set; }
-
         #endregion
 
         private void InitializeTurn(LevelView levelView, IMessageReporter messageReporter)
         {
             _LevelView = levelView;
             _Player = levelView.Player;
-            _Exit = _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
 
             _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
             _ClearPathAttempts.Clear();
 
-            if (_LevelView.Field.Width != CachedWalls?.GetLength(0) || _LevelView.Field.Height != CachedWalls?.GetLength(1))
+            Location exit = _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
+            if (_Exit != exit)
+            {
+                _Exit = exit;
                 InitializeLevel(messageReporter);
-
-            if (!CacheLocations[_Player.Location.X, _Player.Location.Y])
-                CacheWalls();
+            }
 
             _Map.InitializeTurn();
             _Navigator.InitializeTurn(_Player.Location);
@@ -123,11 +120,7 @@ namespace SpurRoguelike.PlayerBot
 
         private void InitializeLevel(IMessageReporter messageReporter)
         {
-            CacheLocations = new bool[_LevelView.Field.Width, _LevelView.Field.Height];
-            CachedWalls = new bool[_LevelView.Field.Width, _LevelView.Field.Height];
-            CachedWalls[_Exit.X, _Exit.Y] = true;
-            CacheWalls();
-            _Map.InitializeLevel();
+            _Map.InitializeLevel(_Exit);
             _Reporter = new BotReporter(messageReporter);
         }
 
@@ -287,20 +280,6 @@ namespace SpurRoguelike.PlayerBot
         private int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
         {
             return (int)(((float)attacker.TotalAttack / target.Defence) * _BaseDamage * (maxDamage ? 1 : 0.95f));
-        }
-
-        private void CacheWalls()
-        {
-            FieldView field = _LevelView.Field;
-            for (int x = 0; x < field.Width; ++x)
-                for (int y = 0; y < field.Height; ++y)
-                {
-                    Location location = new Location(x, y);
-                    if (field[location] == CellType.Wall && !location.IsInStepRange(_Exit)) // TODO _Exit - для уровня с боссом
-                        CachedWalls[x, y] = true;
-                }
-
-            CacheLocations[_Player.Location.X, _Player.Location.Y] = true;
         }
     }
 }

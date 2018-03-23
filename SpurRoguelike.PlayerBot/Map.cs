@@ -4,6 +4,8 @@ using AStarNavigator;
 using AStarNavigator.Algorithms;
 using AStarNavigator.Providers;
 using SpurRoguelike.Core.Primitives;
+using SpurRoguelike.Core.Views;
+using SpurRoguelike.PlayerBot.Extensions;
 
 namespace SpurRoguelike.PlayerBot
 {
@@ -13,11 +15,15 @@ namespace SpurRoguelike.PlayerBot
         private const int _HiddenCellsWeight = 10;
 
         private IMapPathfindingContext _Context;
+        private Location _Exit;
         private float?[,] _CachedWallsWeights;
         private List<Location> _CachedTraps;
         private List<Location> _CachedHealthPacks;
         private List<Location> _CachedMonsters;
-        private List<Location> _CachedWalls;
+        private List<Location> _CachedWalls_Old; //TODO
+
+        private bool[,] _CachedWalls;
+        private bool[,] _CacheLocations;
 
         public Map(IMapPathfindingContext context)
         {
@@ -29,12 +35,22 @@ namespace SpurRoguelike.PlayerBot
             _CachedTraps = _Context.Level.Field.GetCellsOfType(CellType.Trap).ToList();
             _CachedHealthPacks = _Context.Level.HealthPacks.Select(p => p.Location).ToList();
             _CachedMonsters = _Context.Level.Monsters.Select(m => m.Location).ToList();
-            _CachedWalls = _Context.Level.Field.GetCellsOfType(CellType.Wall).ToList();
+            _CachedWalls_Old = _Context.Level.Field.GetCellsOfType(CellType.Wall).ToList();
+
+            if (!_CacheLocations[_Context.Level.Player.Location.X, _Context.Level.Player.Location.Y])
+                CacheWalls();
         }
 
-        public void InitializeLevel()
+        public void InitializeLevel(Location exit)
         {
+            _Exit = exit;
+
             _CachedWallsWeights = new float?[_Context.Level.Field.Width, _Context.Level.Field.Height];
+
+            _CacheLocations = new bool[_Context.Level.Field.Width, _Context.Level.Field.Height];
+            _CachedWalls = new bool[_Context.Level.Field.Width, _Context.Level.Field.Height];
+            _CachedWalls[_Exit.X, _Exit.Y] = true;
+            CacheWalls();
         }
 
         #region IBlockedProvider
@@ -49,7 +65,7 @@ namespace SpurRoguelike.PlayerBot
             if (location.X < 0 || location.Y < 0 || location.X >= _Context.Level.Field.Width || location.Y >= _Context.Level.Field.Height)
                 return true;
 
-            if (_Context.CachedWalls[location.X, location.Y])
+            if (_CachedWalls[location.X, location.Y])
                 return true;
 
             CellType cellType = _Context.Level.Field[location];
@@ -90,6 +106,20 @@ namespace SpurRoguelike.PlayerBot
         }
 
         #endregion
+
+        private void CacheWalls()
+        {
+            FieldView field = _Context.Level.Field;
+            for (int x = 0; x < field.Width; ++x)
+                for (int y = 0; y < field.Height; ++y)
+                {
+                    Location location = new Location(x, y);
+                    if (field[location] == CellType.Wall && !location.IsInStepRange(_Exit)) // TODO _Exit - для уровня с боссом
+                        _CachedWalls[x, y] = true;
+                }
+
+            _CacheLocations[_Context.Level.Player.Location.X, _Context.Level.Player.Location.Y] = true;
+        }
 
         private bool IsLocationHidden(Location location)
         {
@@ -173,7 +203,22 @@ namespace SpurRoguelike.PlayerBot
 
         private int GetWallsCountInRange(Location location, int range)
         {
-            return _CachedWalls.Count(w => location.IsInRange(w, range));
+            //int count = 0;
+            //for (int x = location.X - range; x <= location.X + range; ++x)
+            //{
+            //    if (x >= 0 && x < CachedWalls.GetLength(0))
+            //        for (int y = location.Y - range; y <= location.Y + range; ++y)
+            //        {
+            //            if (y >= 0 && y < CachedWalls.GetLength(1) && CachedWalls[x, y])
+            //                count++;
+            //        }
+            //}
+
+            //var r= _Context.Level.Field.GetCellsOfType(CellType.Wall).ToList().Where(w => location.IsInRange(w, range));
+            return _CachedWalls_Old.Count(w => location.IsInRange(w, range));
+
+            //if (count != count2)
+            //    throw new System.Exception(count + " " + count2);
         }
 
         private bool AllCellsInRangeAreVisible(Location location, int range)
