@@ -14,6 +14,7 @@ namespace SpurRoguelike.PlayerBot
         private LevelView _LevelView;
         private PawnView _Player;
         private Location _Exit;
+        private int _LevelWidth;
 
         private BotReporter _Reporter;
         private BotNavigator _Navigator;
@@ -94,9 +95,10 @@ namespace SpurRoguelike.PlayerBot
             _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
 
             Location exit = _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
-            if (_Exit != exit)
+            if (_Exit != exit || _LevelWidth != _LevelView.Field.Width)
             {
                 _Exit = exit;
+                _LevelWidth = _LevelView.Field.Width;
                 InitializeLevel(level, messageReporter);
             }
 
