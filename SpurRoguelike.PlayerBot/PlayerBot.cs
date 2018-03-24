@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using SpurRoguelike.Core;
 using SpurRoguelike.Core.Primitives;
 using SpurRoguelike.Core.Views;
@@ -13,14 +14,16 @@ namespace SpurRoguelike.PlayerBot
 
         private LevelView _LevelView;
         private PawnView _Player;
-        private Location _Exit;
+        private Location? _Exit;
         private int _LevelWidth;
+        private int _LevelHeight;
 
         private BotReporter _Reporter;
         private BotNavigator _Navigator;
 
         private int _PreviousHealth;
         private bool _BeingCareful;
+        private List<Location> _UnexploredLocations = new List<Location>();
 
         public PlayerBot()
         {
@@ -67,6 +70,13 @@ namespace SpurRoguelike.PlayerBot
                 return turn;
             }
 
+            turn = Explore();
+            if (turn != null)
+            {
+                _Reporter.Say("Exploring.");
+                return turn;
+            }
+
             turn = GoToExit();
             if (turn != null)
             {
@@ -84,7 +94,9 @@ namespace SpurRoguelike.PlayerBot
         {
             _Reporter = new BotReporter(messageReporter);
 
-            _Navigator.InitializeLevel(level, _Exit);
+            InitializeLocationsToExplore();
+
+            _Navigator.InitializeLevel(level);
         }
 
         private void InitializeTurn(LevelView level, IMessageReporter messageReporter)
@@ -92,17 +104,23 @@ namespace SpurRoguelike.PlayerBot
             _LevelView = level;
             _Player = level.Player;
 
-            _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 50 ? 2 : 1);
+            _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 70 ? 2 : 1); //TODO 50
 
-            Location exit = _LevelView.Field.GetCellsOfType(CellType.Exit).Single();
-            if (_Exit != exit || _LevelWidth != _LevelView.Field.Width)
+            if (_LevelWidth != _LevelView.Field.Width || _LevelHeight != _LevelView.Field.Height)
             {
-                _Exit = exit;
+                _Exit = null;
                 _LevelWidth = _LevelView.Field.Width;
+                _LevelHeight = _LevelView.Field.Height;
                 InitializeLevel(level, messageReporter);
             }
 
-            _Navigator.InitializeTurn(_LevelView, _Player.Location, _BeingCareful);
+            Location exit = _LevelView.Field.GetCellsOfType(CellType.Exit).SingleOrDefault();
+            if (exit != default(Location))
+                _Exit = exit;
+
+            CheckInLocations();
+
+            _Navigator.InitializeTurn(_LevelView, _Exit, _Player.Location, _BeingCareful);
         }
 
         private Turn CheckForHealth()
@@ -178,6 +196,25 @@ namespace SpurRoguelike.PlayerBot
             return _Navigator.GoTo(closestMonster.Location);
         }
 
+        private Turn Explore()
+        {
+            var locations = _UnexploredLocations.OrderBy(l => _Player.Location.CalculateDistance(l));
+
+            if (!locations.Any())
+                return null;
+
+            foreach (Location location in locations)
+            {
+                Turn turn = _Navigator.GoTo(location);
+                if (turn != null)
+                    return turn;
+                else
+                    _UnexploredLocations.Remove(location);
+            }
+
+            return null;
+        }
+
         private Turn GoToExit()
         {
             Turn turn = null;
@@ -187,7 +224,7 @@ namespace SpurRoguelike.PlayerBot
             if (turn != null)
                 return turn;
 
-            return _Navigator.GoTo(_Exit);
+            return _Navigator.GoTo(_Exit.Value);
         }
 
         private Turn Panic()
@@ -216,6 +253,29 @@ namespace SpurRoguelike.PlayerBot
         private static int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
         {
             return (int)(((float)attacker.TotalAttack / target.Defence) * _BaseDamage * (maxDamage ? 1 : 0.95f));
+        }
+
+        private void InitializeLocationsToExplore()
+        {
+            _UnexploredLocations.Clear();
+
+            for (int x = 0; x < _LevelWidth; x += 10)
+            {
+                _UnexploredLocations.Add(new Location(x, _LevelHeight - 1));
+
+                for (int y = 0; y < _LevelHeight; y += 10)
+                {
+                    _UnexploredLocations.Add(new Location(x, y));
+                }
+            }
+
+            for (int y = 0; y < _LevelHeight; y += 10)
+                _UnexploredLocations.Add(new Location(_LevelWidth - 1, y));
+        }
+
+        private void CheckInLocations()
+        {
+            _UnexploredLocations.RemoveAll(l => _LevelView.Field[l] != CellType.Hidden);
         }
     }
 }

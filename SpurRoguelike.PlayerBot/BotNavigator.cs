@@ -36,22 +36,22 @@ namespace SpurRoguelike.PlayerBot
 
         #endregion
 
-        public void InitializeLevel(LevelView level, Location exit)
+        public void InitializeLevel(LevelView level)
         {
             _VisibilityWidth = level.Field.VisibilityWidth;
             _VisibilityHeight = level.Field.VisibilityHeight;
 
-            _Map.InitializeLevel(level, exit);
+            _Map.InitializeLevel(level);
         }
 
-        public void InitializeTurn(LevelView level, Location playerLocation, bool applyWeights)
+        public void InitializeTurn(LevelView level, Location? exit, Location playerLocation, bool applyWeights)
         {
             _PlayerLocation = playerLocation;
             ApplyWeights = applyWeights;
 
             _ClearPathAttempts.Clear();
 
-            _Map.InitializeTurn(level);
+            _Map.InitializeTurn(level, exit);
         }
 
         public Turn GoTo(Location location)

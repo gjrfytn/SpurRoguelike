@@ -21,7 +21,7 @@ namespace SpurRoguelike.PlayerBot
         private IMapNavigationContext _Context;
         private LevelView _Level;
         private FieldView _Field;
-        private Location _Exit;
+        private Location? _Exit;
 
         private List<Location> _Traps;
         private List<Location> _Walls; //TODO
@@ -36,10 +36,11 @@ namespace SpurRoguelike.PlayerBot
             _Context = context;
         }
 
-        public void InitializeTurn(LevelView level)
+        public void InitializeTurn(LevelView level, Location? exit)
         {
             _Level = level;
             _Field = _Level.Field;
+            _Exit = exit;
 
             _Traps = _Field.GetCellsOfType(CellType.Trap).ToList();
             HealthPacks = _Level.HealthPacks.Select(p => p.Location).ToList();
@@ -50,16 +51,14 @@ namespace SpurRoguelike.PlayerBot
                 CacheWalls();
         }
 
-        public void InitializeLevel(LevelView level, Location exit)
+        public void InitializeLevel(LevelView level)
         {
             _Level = level;
             _Field = _Level.Field;
-            _Exit = exit;
 
             _CachedWallsWeights = new float?[_Field.Width, _Field.Height];
             _CacheLocations = new bool[_Field.Width, _Field.Height];
             _CachedWalls = new bool[_Field.Width, _Field.Height];
-            _CachedWalls[_Exit.X, _Exit.Y] = true;
         }
 
         #region IBlockedProvider
@@ -127,7 +126,7 @@ namespace SpurRoguelike.PlayerBot
                 for (int y = 0; y < _Field.Height; ++y)
                 {
                     Location location = new Location(x, y);
-                    if (_Field[location] == CellType.Wall && !location.IsInStepRange(_Exit)) // _Exit - для уровня с боссом
+                    if (_Field[location] == CellType.Wall && !(_Exit.HasValue && location.IsInStepRange(_Exit.Value))) // _Exit - для уровня с боссом
                         _CachedWalls[x, y] = true;
                 }
 
@@ -190,8 +189,8 @@ namespace SpurRoguelike.PlayerBot
             int monstersInOneRange = GetMonsterCountInRange(location, 1);
             int monstersInTwoRange = GetMonsterCountInRange(location, 2);
 
-            result *= 0.5f * (monstersInTwoRange - monstersInOneRange) + 1; //1.5?
-            result *= monstersInOneRange + 1; //1.5?
+            result *= 0.7f * (monstersInTwoRange - monstersInOneRange) + 1; //TODO 0.5
+            result *= 1.5f * monstersInOneRange + 1; //TODO 1
         }
 
         private static Location ConvertToLocation(Tile tile)
