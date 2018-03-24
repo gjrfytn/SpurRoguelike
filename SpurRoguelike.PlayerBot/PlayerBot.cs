@@ -12,7 +12,7 @@ namespace SpurRoguelike.PlayerBot
         private const int _PlayerMaxHealth = 100;
         private const int _BaseDamage = 10;
 
-        private LevelView _LevelView;
+        private LevelView _Level;
         private PawnView _Player;
         private Location? _Exit;
         private int _LevelWidth;
@@ -22,7 +22,8 @@ namespace SpurRoguelike.PlayerBot
         private BotNavigator _Navigator;
 
         private int _PreviousHealth;
-        private bool _BeingCareful;
+        private bool _InDanger;
+        private List<Location> _FoundHealthPacks = new List<Location>();
         private List<Location> _UnexploredLocations = new List<Location>();
 
         public PlayerBot()
@@ -36,11 +37,11 @@ namespace SpurRoguelike.PlayerBot
         {
             InitializeTurn(levelView, messageReporter);
 
-            if (_BeingCareful)
-            {
-                //System.Threading.Thread.Sleep(200);
-                _Reporter.Say("Being careful.");
-            }
+            //if (_InDanger)
+            //{
+            //    //System.Threading.Thread.Sleep(200);
+            //    _Reporter.Say("Being careful.");
+            //}
 
             Turn turn = CheckForHealth();
             if (turn != null)
@@ -94,6 +95,7 @@ namespace SpurRoguelike.PlayerBot
         {
             _Reporter = new BotReporter(messageReporter);
 
+            _FoundHealthPacks.Clear();
             InitializeLocationsToExplore();
 
             _Navigator.InitializeLevel(level);
@@ -101,40 +103,38 @@ namespace SpurRoguelike.PlayerBot
 
         private void InitializeTurn(LevelView level, IMessageReporter messageReporter)
         {
-            _LevelView = level;
+            _Level = level;
             _Player = level.Player;
 
-            _BeingCareful = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 5)) >= 6 / (_Player.Health < 70 ? 2 : 1); //TODO 50
-
-            if (_LevelWidth != _LevelView.Field.Width || _LevelHeight != _LevelView.Field.Height)
+            if (_LevelWidth != _Level.Field.Width || _LevelHeight != _Level.Field.Height)
             {
                 _Exit = null;
-                _LevelWidth = _LevelView.Field.Width;
-                _LevelHeight = _LevelView.Field.Height;
+                _LevelWidth = _Level.Field.Width;
+                _LevelHeight = _Level.Field.Height;
                 InitializeLevel(level, messageReporter);
             }
 
-            Location exit = _LevelView.Field.GetCellsOfType(CellType.Exit).SingleOrDefault();
+            Location exit = _Level.Field.GetCellsOfType(CellType.Exit).SingleOrDefault();
             if (exit != default(Location))
                 _Exit = exit;
 
             CheckInLocations();
 
-            _Navigator.InitializeTurn(_LevelView, _Exit, _Player.Location, _BeingCareful);
+            EstimateDanger();
+
+            _Navigator.InitializeTurn(_Level, _Exit, _Player.Location, _InDanger);
         }
 
         private Turn CheckForHealth()
         {
+            CheckInHealthPacks();
+
             if (_PreviousHealth >= _Player.Health)
                 return GoToClosestHealthPack();
 
             _PreviousHealth = 0;
 
-            int monstersCount = _LevelView.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 10));
-
-            double multiplier = 0.3 / (1 + System.Math.Exp(-2 * (monstersCount - 4))) + 0.5;
-
-            if (_Player.Health >= _PlayerMaxHealth * multiplier)
+            if (!_InDanger)
                 return null;
 
             _PreviousHealth = _Player.Health;
@@ -144,7 +144,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn KillWeakenedMonster()
         {
-            var monsters = _LevelView.Monsters.Select(m => new { Monster = m, Distance = _Player.Location.CalculateDistance(m.Location) }).OrderBy(m => m.Distance);
+            var monsters = _Level.Monsters.Select(m => new { Monster = m, Distance = _Player.Location.CalculateDistance(m.Location) }).OrderBy(m => m.Distance);
 
             if (!monsters.Any())
                 return null;
@@ -165,7 +165,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn CheckForBestItem()
         {
-            var itemsByDistance = _LevelView.Items.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
+            var itemsByDistance = _Level.Items.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
 
             if (!itemsByDistance.Any())
                 return null;
@@ -173,7 +173,7 @@ namespace SpurRoguelike.PlayerBot
             if (!_Player.TryGetEquippedItem(out ItemView playerItem))
                 return _Navigator.GoTo(itemsByDistance.First().Location);
 
-            var itemsByPower = _LevelView.Items.OrderByDescending(i => CalulateItemPower(i));
+            var itemsByPower = _Level.Items.OrderByDescending(i => CalulateItemPower(i));
 
             if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First())) //TODO Костыль с 0.001f
                 return null;
@@ -183,7 +183,7 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn GrindMonsters()
         {
-            var monsters = _LevelView.Monsters.OrderBy(m => _Player.Location.CalculateDistance(m.Location));
+            var monsters = _Level.Monsters.OrderBy(m => _Player.Location.CalculateDistance(m.Location));
 
             if (!monsters.Any())
                 return null;
@@ -229,20 +229,20 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn Panic()
         {
-            return Turn.Step((StepDirection)_LevelView.Random.Next(4));
+            return Turn.Step((StepDirection)_Level.Random.Next(4));
         }
 
         private Turn GoToClosestHealthPack()
         {
-            var packs = _LevelView.HealthPacks.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
+            var packs = _FoundHealthPacks.OrderBy(p => _Player.Location.CalculateDistance(p));
 
             if (!packs.Any())
                 return null;
 
-            if (_BeingCareful)
-                return _Navigator.GoToClosest(packs.Take(3).Select(p => p.Location));
+            if (_InDanger)
+                return _Navigator.GoToClosest(packs.Take(3).Select(p => p));
 
-            return _Navigator.GoTo(packs.First().Location);
+            return _Navigator.GoTo(packs.First());
         }
 
         private static float CalulateItemPower(ItemView item)
@@ -275,7 +275,27 @@ namespace SpurRoguelike.PlayerBot
 
         private void CheckInLocations()
         {
-            _UnexploredLocations.RemoveAll(l => _LevelView.Field[l] != CellType.Hidden);
+            _UnexploredLocations.RemoveAll(l => _Level.Field[l] != CellType.Hidden);
+        }
+
+        private void CheckInHealthPacks()
+        {
+            for (int i = _FoundHealthPacks.Count - 1; i >= 0; --i)
+                if (Map.LocationIsVisible(_Level.Field, _FoundHealthPacks[i]) && !_Level.GetHealthPackAt(_FoundHealthPacks[i]).HasValue)
+                    _FoundHealthPacks.RemoveAt(i);
+
+            foreach (HealthPackView pack in _Level.HealthPacks)
+                if (!_FoundHealthPacks.Contains(pack.Location))
+                    _FoundHealthPacks.Add(pack.Location);
+        }
+
+        private void EstimateDanger()
+        {
+            int monstersCount = _Level.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 8));
+
+            double multiplier = 0.3 / (1 + System.Math.Exp(-2 * (monstersCount - 4))) + 0.5;
+
+            _InDanger = _Player.Health < _PlayerMaxHealth * multiplier;
         }
     }
 }

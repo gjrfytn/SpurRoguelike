@@ -28,7 +28,7 @@ namespace AStarNavigator
 
         public IEnumerable<Tile> Navigate(Tile from, Tile to)
         {
-            var closed = new List<Tile>();
+            var closed = new HashSet<Tile>();
             var open = new List<Tile>() { from };
 
             var path = new Dictionary<Tile, Tile>();

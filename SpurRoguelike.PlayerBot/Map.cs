@@ -25,6 +25,7 @@ namespace SpurRoguelike.PlayerBot
 
         private List<Location> _Traps;
         private List<Location> _Walls; //TODO
+        private List<Location> _HiddenCells;
 
         private float?[,] _CachedWallsWeights;
 
@@ -46,6 +47,7 @@ namespace SpurRoguelike.PlayerBot
             HealthPacks = _Level.HealthPacks.Select(p => p.Location).ToList();
             Monsters = _Level.Monsters.Select(m => m.Location).ToList();
             _Walls = _Field.GetCellsOfType(CellType.Wall).ToList();
+            _HiddenCells = _Field.GetCellsOfType(CellType.Hidden).ToList();
 
             if (!_CacheLocations[_Level.Player.Location.X, _Level.Player.Location.Y])
                 CacheWalls();
@@ -118,6 +120,11 @@ namespace SpurRoguelike.PlayerBot
         public bool LocationIsVisible(Location location)
         {
             return _Field[location] != CellType.Hidden;
+        }
+
+        public static bool LocationIsVisible(FieldView field, Location location)
+        {
+            return field[location] != CellType.Hidden;
         }
 
         private void CacheWalls()
@@ -235,7 +242,7 @@ namespace SpurRoguelike.PlayerBot
 
         private bool AllCellsInRangeAreVisible(Location location, int range)
         {
-            return !_Field.GetCellsOfType(CellType.Hidden).Any(c => location.IsInRange(c, range));
+            return !_HiddenCells.Any(c => location.IsInRange(c, range));
         }
     }
 }
