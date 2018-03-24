@@ -25,6 +25,8 @@ namespace SpurRoguelike.PlayerBot
         private bool _InDanger;
         private List<Location> _FoundHealthPacks = new List<Location>();
         private List<Location> _UnexploredLocations = new List<Location>();
+        private Location? _TargetMonster;
+        private Location? _TargetItem;
 
         public PlayerBot()
         {
@@ -165,6 +167,11 @@ namespace SpurRoguelike.PlayerBot
 
         private Turn CheckForBestItem()
         {
+            if (_TargetItem.HasValue && !Map.LocationIsVisible(_Level.Field, _TargetItem.Value))
+                return _Navigator.GoTo(_TargetItem.Value);
+
+            _TargetItem = null;
+
             var itemsByDistance = _Level.Items.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
 
             if (!itemsByDistance.Any())
@@ -175,10 +182,12 @@ namespace SpurRoguelike.PlayerBot
 
             var itemsByPower = _Level.Items.OrderByDescending(i => CalulateItemPower(i));
 
-            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(itemsByPower.First())) //TODO Костыль с 0.001f
+            ItemView item = itemsByPower.First();
+            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(item)) //TODO Костыль с 0.001f
                 return null;
 
-            return _Navigator.GoTo(itemsByPower.First().Location);
+            _TargetItem = item.Location;
+            return _Navigator.GoTo(_TargetItem.Value);
         }
 
         private Turn GrindMonsters()
@@ -186,14 +195,21 @@ namespace SpurRoguelike.PlayerBot
             var monsters = _Level.Monsters.OrderBy(m => _Player.Location.CalculateDistance(m.Location));
 
             if (!monsters.Any())
+            {
+                if (_TargetMonster.HasValue && !Map.LocationIsVisible(_Level.Field, _TargetMonster.Value))
+                    return _Navigator.GoTo(_TargetMonster.Value);
+
+                _TargetMonster = null;
+
                 return null;
+            }
 
-            var closestMonster = monsters.First();
+            _TargetMonster = monsters.First().Location;
 
-            if (closestMonster.Location.IsInRange(_Player.Location, 1))
-                return Turn.Attack(closestMonster.Location - _Player.Location);
+            if (_TargetMonster.Value.IsInRange(_Player.Location, 1))
+                return Turn.Attack(_TargetMonster.Value - _Player.Location);
 
-            return _Navigator.GoTo(closestMonster.Location);
+            return _Navigator.GoTo(_TargetMonster.Value);
         }
 
         private Turn Explore()
