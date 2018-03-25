@@ -124,7 +124,7 @@ namespace SpurRoguelike.PlayerBot
 
             EstimateDanger();
 
-            _Navigator.InitializeTurn(_Level, _Exit, _Player.Location, _InDanger);
+            _Navigator.InitializeTurn(_Exit, _Player.Location, _InDanger);
         }
 
         private Turn CheckForHealth()

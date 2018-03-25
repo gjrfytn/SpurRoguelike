@@ -44,14 +44,14 @@ namespace SpurRoguelike.PlayerBot
             _Map.InitializeLevel(level);
         }
 
-        public void InitializeTurn(LevelView level, Location? exit, Location playerLocation, bool applyWeights)
+        public void InitializeTurn(Location? exit, Location playerLocation, bool applyWeights)
         {
             _PlayerLocation = playerLocation;
             ApplyWeights = applyWeights;
 
             _ClearPathAttempts.Clear();
 
-            _Map.InitializeTurn(level, exit);
+            _Map.InitializeTurn(exit);
         }
 
         public Turn GoTo(Location location)

@@ -24,32 +24,29 @@ namespace SpurRoguelike.PlayerBot
         private Location? _Exit;
 
         private List<Location> _Traps;
-        private List<Location> _Walls; //TODO
         private List<Location> _HiddenCells;
 
         private float?[,] _CachedWallsWeights;
 
         private bool[,] _CachedWalls;
-        private bool[,] _CacheLocations;
+        private bool[,] _WallsCacheLocations;
 
         public Map(IMapNavigationContext context)
         {
             _Context = context;
         }
 
-        public void InitializeTurn(LevelView level, Location? exit)
+        public void InitializeTurn(Location? exit)
         {
-            _Level = level;
             _Field = _Level.Field;
             _Exit = exit;
 
             _Traps = _Field.GetCellsOfType(CellType.Trap).ToList();
             HealthPacks = _Level.HealthPacks.Select(p => p.Location).ToList();
             Monsters = _Level.Monsters.Select(m => m.Location).ToList();
-            _Walls = _Field.GetCellsOfType(CellType.Wall).ToList();
             _HiddenCells = _Field.GetCellsOfType(CellType.Hidden).ToList();
 
-            if (!_CacheLocations[_Level.Player.Location.X, _Level.Player.Location.Y])
+            if (!_WallsCacheLocations[_Level.Player.Location.X, _Level.Player.Location.Y])
                 CacheWalls();
         }
 
@@ -59,7 +56,7 @@ namespace SpurRoguelike.PlayerBot
             _Field = _Level.Field;
 
             _CachedWallsWeights = new float?[_Field.Width, _Field.Height];
-            _CacheLocations = new bool[_Field.Width, _Field.Height];
+            _WallsCacheLocations = new bool[_Field.Width, _Field.Height];
             _CachedWalls = new bool[_Field.Width, _Field.Height];
         }
 
@@ -137,7 +134,7 @@ namespace SpurRoguelike.PlayerBot
                         _CachedWalls[x, y] = true;
                 }
 
-            _CacheLocations[_Level.Player.Location.X, _Level.Player.Location.Y] = true;
+            _WallsCacheLocations[_Level.Player.Location.X, _Level.Player.Location.Y] = true;
         }
 
         private bool IsLocationHidden(Location location)
@@ -222,22 +219,18 @@ namespace SpurRoguelike.PlayerBot
 
         private int GetWallsCountInRange(Location location, int range)
         {
-            //int count = 0;
-            //for (int x = location.X - range; x <= location.X + range; ++x)
-            //{
-            //    if (x >= 0 && x < CachedWalls.GetLength(0))
-            //        for (int y = location.Y - range; y <= location.Y + range; ++y)
-            //        {
-            //            if (y >= 0 && y < CachedWalls.GetLength(1) && CachedWalls[x, y])
-            //                count++;
-            //        }
-            //}
+            int count = 0;
+            for (int x = location.X - range; x <= location.X + range; ++x)
+            {
+                if (x >= 0 && x < _CachedWalls.GetLength(0))
+                    for (int y = location.Y - range; y <= location.Y + range; ++y)
+                    {
+                        if (y >= 0 && y < _CachedWalls.GetLength(1) && _CachedWalls[x, y])
+                            count++;
+                    }
+            }
 
-            //var r= _Context.Level.Field.GetCellsOfType(CellType.Wall).ToList().Where(w => location.IsInRange(w, range));
-            return _Walls.Count(w => location.IsInRange(w, range));
-
-            //if (count != count2)
-            //    throw new System.Exception(count + " " + count2);
+            return count;
         }
 
         private bool AllCellsInRangeAreVisible(Location location, int range)
