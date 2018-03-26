@@ -275,18 +275,26 @@ namespace SpurRoguelike.PlayerBot
         {
             _UnexploredLocations.Clear();
 
-            for (int x = 0; x < _LevelWidth; x += 10)
+            if (_Level.Field.VisibilityWidth == int.MaxValue)
+                return;
+
+            int stepX = 2 * _Level.Field.VisibilityWidth;
+            int stepY = 2 * _Level.Field.VisibilityHeight;
+
+            for (int x = 0; x < _LevelWidth; x += stepX)
             {
                 _UnexploredLocations.Add(new Location(x, _LevelHeight - 1));
 
-                for (int y = 0; y < _LevelHeight; y += 10)
+                for (int y = 0; y < _LevelHeight; y += stepY)
                 {
                     _UnexploredLocations.Add(new Location(x, y));
                 }
             }
 
-            for (int y = 0; y < _LevelHeight; y += 10)
+            for (int y = 0; y < _LevelHeight; y += stepY)
                 _UnexploredLocations.Add(new Location(_LevelWidth - 1, y));
+
+            _UnexploredLocations.Add(new Location(_LevelWidth - 1, _LevelHeight-1));
         }
 
         private void CheckInLocations()
