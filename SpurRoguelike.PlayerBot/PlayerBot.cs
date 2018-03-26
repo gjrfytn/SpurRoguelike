@@ -150,17 +150,15 @@ namespace SpurRoguelike.PlayerBot
 
             _TargetItem = null;
 
-            var itemsByDistance = _Level.Items.OrderBy(p => _Player.Location.CalculateDistance(p.Location));
+            var items = _Level.Items;
 
-            if (!itemsByDistance.Any())
+            if (!items.Any())
                 return null;
 
             if (!_Player.TryGetEquippedItem(out ItemView playerItem))
-                return _Navigator.GoTo(itemsByDistance.First().Location);
+                return _Navigator.GoTo(items.OrderBy(p => _Player.Location.CalculateDistance(p.Location)).First().Location);
 
-            var itemsByPower = _Level.Items.OrderByDescending(i => CalulateItemPower(i));
-
-            ItemView item = itemsByPower.First();
+            ItemView item = items.OrderByDescending(i => CalulateItemPower(i)).First();
             if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(item)) //TODO Костыль с 0.001f
                 return null;
 
