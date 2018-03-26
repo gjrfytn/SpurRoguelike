@@ -12,6 +12,8 @@ namespace SpurRoguelike.PlayerBot
         private const int _PlayerMaxHealth = 100;
         private const int _BaseDamage = 10;
 
+        private readonly System.Func<Turn>[] _Behaviours;
+
         private LevelView _Level;
         private PawnView _Player;
         private Location? _Exit;
@@ -31,6 +33,17 @@ namespace SpurRoguelike.PlayerBot
         public PlayerBot()
         {
             _Navigator = new BotNavigator();
+
+            _Behaviours = new System.Func<Turn>[]
+            {
+                CheckForHealth,
+                KillWeakenedMonster,
+                CheckForBestItem,
+                GrindMonsters,
+                Explore,
+                GoToExit,
+                Panic
+            };
         }
 
         #region IPlayerController
@@ -39,62 +52,26 @@ namespace SpurRoguelike.PlayerBot
         {
             InitializeTurn(levelView, messageReporter);
 
-            //if (_InDanger)
-            //{
-            //    //System.Threading.Thread.Sleep(200);
-            //    _Reporter.Say("Being careful.");
-            //}
-
-            Turn turn = CheckForHealth();
-            if (turn != null)
+            foreach (System.Func<Turn> behaviour in _Behaviours)
             {
-                _Reporter.Say("Checking for health.");
-                return turn;
+                Turn turn = behaviour();
+
+                if (turn != null)
+                {
+                    _Reporter.Say(behaviour.Method.Name);
+
+                    return turn;
+                }
             }
 
-            turn = KillWeakenedMonster();
-            if (turn != null)
-            {
-                _Reporter.Say("Killing weak monster.");
-                return turn;
-            }
-
-            turn = CheckForBestItem();
-            if (turn != null)
-            {
-                _Reporter.Say("Going for item.");
-                return turn;
-            }
-
-            turn = GrindMonsters();
-            if (turn != null)
-            {
-                _Reporter.Say("Grinding monsters.");
-                return turn;
-            }
-
-            turn = Explore();
-            if (turn != null)
-            {
-                _Reporter.Say("Exploring.");
-                return turn;
-            }
-
-            turn = GoToExit();
-            if (turn != null)
-            {
-                _Reporter.Say("Going to exit.");
-                return turn;
-            }
-
-            _Reporter.Say("DO NOT KNOW WHAT TO DO!!!");
-            return Panic();
+            throw new System.InvalidOperationException();
         }
 
         #endregion
 
         private void InitializeLevel(LevelView level, IMessageReporter messageReporter)
         {
+            _Exit = null;
             _Reporter = new BotReporter(messageReporter);
 
             _FoundHealthPacks.Clear();
@@ -110,7 +87,6 @@ namespace SpurRoguelike.PlayerBot
 
             if (_LevelWidth != _Level.Field.Width || _LevelHeight != _Level.Field.Height)
             {
-                _Exit = null;
                 _LevelWidth = _Level.Field.Width;
                 _LevelHeight = _Level.Field.Height;
                 InitializeLevel(level, messageReporter);
@@ -126,6 +102,8 @@ namespace SpurRoguelike.PlayerBot
 
             _Navigator.InitializeTurn(_Exit, _Player.Location, _InDanger);
         }
+
+        #region Behaviours
 
         private Turn CheckForHealth()
         {
@@ -248,6 +226,8 @@ namespace SpurRoguelike.PlayerBot
             return Turn.Step((StepDirection)_Level.Random.Next(4));
         }
 
+        #endregion
+
         private Turn GoToClosestHealthPack()
         {
             var packs = _FoundHealthPacks.OrderBy(p => _Player.Location.CalculateDistance(p));
@@ -294,7 +274,7 @@ namespace SpurRoguelike.PlayerBot
             for (int y = 0; y < _LevelHeight; y += stepY)
                 _UnexploredLocations.Add(new Location(_LevelWidth - 1, y));
 
-            _UnexploredLocations.Add(new Location(_LevelWidth - 1, _LevelHeight-1));
+            _UnexploredLocations.Add(new Location(_LevelWidth - 1, _LevelHeight - 1));
         }
 
         private void CheckInLocations()
