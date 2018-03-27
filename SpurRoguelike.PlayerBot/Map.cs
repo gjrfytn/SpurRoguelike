@@ -193,8 +193,8 @@ namespace SpurRoguelike.PlayerBot
             int monstersInOneRange = GetMonsterCountInRange(location, 1);
             int monstersInTwoRange = GetMonsterCountInRange(location, 2);
 
-            result *= 0.7f * (monstersInTwoRange - monstersInOneRange) + 1; //TODO 0.5
-            result *= 1.5f * monstersInOneRange + 1; //TODO 1
+            result *= 0.7f * (monstersInTwoRange - monstersInOneRange) + 1;
+            result *= 1.5f * monstersInOneRange + 1;
         }
 
         private static Location ConvertToLocation(Tile tile)

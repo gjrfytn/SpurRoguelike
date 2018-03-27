@@ -161,7 +161,7 @@ namespace SpurRoguelike.PlayerBot
                 return _Navigator.GoTo(items.OrderBy(p => _Player.Location.CalculateDistance(p.Location)).First().Location);
 
             ItemView item = items.OrderByDescending(i => CalulateItemPower(i)).First();
-            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(item)) //TODO Костыль с 0.001f
+            if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(item))
                 return null;
 
             _TargetItem = item.Location;
@@ -297,7 +297,7 @@ namespace SpurRoguelike.PlayerBot
         {
             int monstersCount = _Level.Monsters.Count(m => m.Location.IsInRange(_Player.Location, 8));
 
-            double multiplier = 0.3 / (1 + System.Math.Exp(-2 * (monstersCount - 4))) + 0.5;
+            double multiplier = 0.3 / (1 + System.Math.Exp(-2 * (monstersCount - 4))) + 0.5; // Логистическая ф-я
 
             _InDanger = _Player.Health < _PlayerMaxHealth * multiplier;
         }
