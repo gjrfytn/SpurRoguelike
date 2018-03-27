@@ -78,6 +78,8 @@ namespace SpurRoguelike.PlayerBot
             InitializeLocationsToExplore();
 
             _Navigator.InitializeLevel(level);
+
+            UnfairBotBackdoor(level);
         }
 
         private void InitializeTurn(LevelView level, IMessageReporter messageReporter)
@@ -298,6 +300,10 @@ namespace SpurRoguelike.PlayerBot
             double multiplier = 0.3 / (1 + System.Math.Exp(-2 * (monstersCount - 4))) + 0.5;
 
             _InDanger = _Player.Health < _PlayerMaxHealth * multiplier;
+        }
+
+        protected virtual void UnfairBotBackdoor(LevelView level)
+        {
         }
     }
 }

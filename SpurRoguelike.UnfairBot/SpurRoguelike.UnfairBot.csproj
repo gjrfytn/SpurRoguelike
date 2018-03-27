@@ -38,13 +38,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="UnfairBot.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SpurRoguelike.Core\SpurRoguelike.Core.csproj">
       <Project>{a9981d1c-3429-4729-b7f7-7839cc30be00}</Project>
       <Name>SpurRoguelike.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SpurRoguelike.PlayerBot\SpurRoguelike.PlayerBot.csproj">
+      <Project>{88D8916A-09A3-4490-B008-16C41C7B750E}</Project>
+      <Name>SpurRoguelike.PlayerBot</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
