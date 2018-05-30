@@ -48,6 +48,7 @@
     <Compile Include="Providers\DiagonalNeighborProvider.cs" />
     <Compile Include="Algorithms\PythagorasAlgorithm.cs" />
     <Compile Include="Tile.cs" />
+	<Compile Include="BidirectionalTileNavigator.cs" />
     <Compile Include="TileNavigator.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

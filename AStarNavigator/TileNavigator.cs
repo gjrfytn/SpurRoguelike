@@ -28,6 +28,9 @@ namespace AStarNavigator
 
         public IEnumerable<Tile> Navigate(Tile from, Tile to)
         {
+            //if (neighborProvider.GetNeighbors(to).All(n => blockedProvider.IsBlocked(n)))
+            //    return null;
+
             var closed = new HashSet<Tile>();
             var open = new List<Tile>() { from };
 

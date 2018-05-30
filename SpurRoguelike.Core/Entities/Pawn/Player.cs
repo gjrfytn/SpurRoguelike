@@ -52,7 +52,7 @@ namespace SpurRoguelike.Core.Entities
             return true;
         }
 
-        private readonly IPlayerController playerController;
+        public IPlayerController playerController;
 
         private const int BaseDamage = 10;
         private const double BaseUpgrade = 1.5;

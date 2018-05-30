@@ -32,6 +32,8 @@ namespace SpurRoguelike.PlayerBot
 
         public PlayerBot()
         {
+            TryLoadNavigatorAssembly();
+
             _Navigator = new BotNavigator();
 
             _Behaviours = new System.Func<Turn>[]
@@ -304,6 +306,20 @@ namespace SpurRoguelike.PlayerBot
 
         protected virtual void UnfairBotBackdoor(LevelView level)
         {
+        }
+
+        private static void TryLoadNavigatorAssembly()
+        {
+            try
+            {
+                string codeBase = System.Reflection.Assembly.GetExecutingAssembly().CodeBase;
+                System.UriBuilder uri = new System.UriBuilder(codeBase);
+                string unescaped = System.Uri.UnescapeDataString(uri.Path);
+                string path = System.IO.Path.GetDirectoryName(unescaped);
+
+                System.Reflection.Assembly.LoadFile(System.IO.Path.GetFullPath(path + "\\AStarNavigator.dll"));
+            }
+            catch { }
         }
     }
 }

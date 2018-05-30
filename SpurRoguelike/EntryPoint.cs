@@ -36,8 +36,10 @@ namespace SpurRoguelike
             commandLineParser
                 .Setup(options => options.LevelCount)
                 .As('n')
-                .SetDefault(6)    
+                .SetDefault(6)
                 .WithDescription("Number of levels to generate");
+
+            bool autotests = args.Contains("-tests");
 
             commandLineParser
                 .SetupHelp("h", "help")
@@ -47,12 +49,63 @@ namespace SpurRoguelike
             if (commandLineParser.Parse(args).HelpCalled)
                 return;
 
-            RunGame(commandLineParser.Object);
+            if (autotests)
+            {
+                using (System.IO.StreamWriter writer = new System.IO.StreamWriter("autotest_result_" + DateTime.Now.GetHashCode() + ".txt"))
+                {
+                    List<int> seeds = new List<int>();
+
+#if true
+                    for (int i = 0; i < 50; ++i)
+                        seeds.Add(i);
+#else
+                    seeds.Add(0);
+                    seeds.Add(1);
+                    seeds.Add(2);
+                    seeds.Add(3);
+                    seeds.Add(4);
+                    seeds.Add(5);
+                    seeds.Add(6);
+                    seeds.Add(7);
+                    seeds.Add(8);
+                    seeds.Add(9);
+                    seeds.Add(10);
+#endif
+
+                    writer.WriteLine("Date:" + DateTime.Now + ", Seeds count: " + seeds.Count);
+                    writer.WriteLine("SEED | LEVEL | TIME");
+                    List<Tuple<int?, TimeSpan>> results = new List<Tuple<int?, TimeSpan>>();
+                    foreach (int seed in seeds)
+                    {
+                        DateTime start = DateTime.Now;
+                        int res = RunGame(commandLineParser.Object, seed, true);
+                        TimeSpan elapsed = DateTime.Now - start;
+                        writer.WriteLine(seed.ToString().PadRight(4) + " | " + res.ToString().PadRight(5) + " | " + elapsed);
+                        results.Add(Tuple.Create(res == -1 ? (int?)null : res, elapsed));
+                        writer.Flush();
+                    }
+                    writer.WriteLine();
+                    writer.WriteLine("MED LVL: " +
+                        results.Where(r => r.Item1.HasValue).Select(r => r.Item1.Value).GroupBy(k => k, (k, r) => new { k, Count = r.Count() }).OrderByDescending(s => s.Count).First().k +
+                        ", AVG LVL: " +
+                        results.Where(r => r.Item1.HasValue).Select(r => r.Item1.Value).Average());
+                    writer.WriteLine("FREEZED: " + results.Count(r => !r.Item1.HasValue));
+                    writer.WriteLine("MIN TIME: " + results.Where(r => r.Item1.HasValue).Min(r => r.Item2));
+                    writer.WriteLine("MAX TIME: " + results.Where(r => r.Item1.HasValue).Max(r => r.Item2));
+                    writer.WriteLine("AVG TIME (min): " + results.Where(r => r.Item1.HasValue).Average(r => r.Item2.TotalMinutes));
+                    writer.WriteLine();
+                    writer.WriteLine("Ended: " + DateTime.Now);
+                }
+            }
+            else
+            {
+                RunGame(commandLineParser.Object, commandLineParser.Object.Seed, false);
+            }
         }
 
-        private static void RunGame(GameOptions options)
+        private static int RunGame(GameOptions options, int seed, bool antifreeze)
         {
-            var levels = GenerateLevels(options.Seed, options.LevelCount);
+            var levels = GenerateLevels(seed, options.LevelCount);
 
             var gui = new ConsoleGui(new TextScreen());
 
@@ -60,9 +113,9 @@ namespace SpurRoguelike
                 new ConsolePlayerController(gui) :
                 BotLoader.LoadPlayerController(options.PlayerController);
 
-            var engine = new Engine(options.PlayerName, playerController, levels.First(), new ConsoleRenderer(gui), new ConsoleEventReporter(gui));
+            var engine = new Engine(options.PlayerName, playerController, levels.First(), new ConsoleRenderer(gui), new ConsoleEventReporter(gui), new ConsolePlayerController(gui));
 
-            engine.GameLoop();
+            return engine.GameLoop(antifreeze);
         }
 
         private static List<Level> GenerateLevels(int seed, int count)
@@ -86,14 +139,14 @@ namespace SpurRoguelike
                 new MonsterClassOptions { Skill = 0.7, Rarity = 0.1, Factory = (name, skill, health, attack, defence) => new Dimwit(name, attack, defence, health, health) },
                 new MonsterClassOptions { Skill = 0.7, Rarity = 0.2, Factory = (name, skill, health, attack, defence) => new Reptiloid(name, attack, defence, health, health, skill) },
                 new MonsterClassOptions { Skill = 0.8, Rarity = 1, Factory = (name, skill, health, attack, defence) => new Reptiloid(name, attack, defence, health, health, skill) });
-          
+
             var levels = new List<Level>();
 
             var settings = FillDefaultSettings();
 
             var increaseX = settings.Field.MaxWidth / 3;
             var increaseY = settings.Field.MaxHeight / 3;
-            
+
             for (int i = 0; i < count - 1; i++)
             {
                 levels.Add(levelGenerator.Generate(settings, monsterClasses, itemClasses, i + 1));
@@ -106,7 +159,7 @@ namespace SpurRoguelike
 
                 settings.Field.MaxWidth += increaseX;
                 settings.Field.MinWidth += increaseX;
-                
+
                 settings.Field.MaxHeight += increaseY;
                 settings.Field.MinHeight += increaseY;
 
@@ -117,7 +170,7 @@ namespace SpurRoguelike
             }
 
             var lastLevelSettigns = FillLastLevelSettings();
-            var lastLevelMonsterClasses = monsterClassesGenerator.Generate(1, 
+            var lastLevelMonsterClasses = monsterClassesGenerator.Generate(1,
                 new MonsterClassOptions { Skill = 1.5, Rarity = 1, Factory = (name, skill, health, attack, defence) => new ArenaFighter(name, attack, defence, health, health, skill) });
 
             var lastLevel = new ArenaGenerator(seed, nameGenerator).Generate(lastLevelSettigns, lastLevelMonsterClasses, itemClasses, levels.Count + 1);
