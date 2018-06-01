@@ -1,0 +1,223 @@
+{
+  "levelData": {
+    "field": {
+      "width": 43,
+      "height": 42,
+      "visibilityHeight": 12,
+      "visibilityWidth": 26
+    },
+    "player": {
+      "name": "Alekseev_Dmitrij",
+      "attack": 10,
+      "defence": 10,
+      "totalAttack": 10,
+      "totalDefence": 10,
+      "health": 100,
+      "isDestroyed": false,
+      "location": {
+        "x": 7,
+        "y": 4
+      }
+    },
+    "monsters": [
+      {
+        "name": "Odaferiv",
+        "attack": 8,
+        "defence": 7,
+        "totalAttack": 8,
+        "totalDefence": 7,
+        "health": 57,
+        "isDestroyed": false,
+        "location": {
+          "x": 13,
+          "y": 15
+        }
+      },
+      {
+        "name": "Fo",
+        "attack": 7,
+        "defence": 7,
+        "totalAttack": 7,
+        "totalDefence": 7,
+        "health": 103,
+        "isDestroyed": false,
+        "location": {
+          "x": 6,
+          "y": 15
+        }
+      },
+      {
+        "name": "Uamezabator",
+        "attack": 7,
+        "defence": 7,
+        "totalAttack": 7,
+        "totalDefence": 7,
+        "health": 106,
+        "isDestroyed": false,
+        "location": {
+          "x": 29,
+          "y": 3
+        }
+      },
+      {
+        "name": "Uamezabator",
+        "attack": 7,
+        "defence": 7,
+        "totalAttack": 7,
+        "totalDefence": 7,
+        "health": 106,
+        "isDestroyed": false,
+        "location": {
+          "x": 12,
+          "y": 7
+        }
+      }
+    ],
+    "items": [
+      {
+        "attackBonus": 1,
+        "defenceBonus": 1,
+        "location": {
+          "x": 10,
+          "y": 12
+        }
+      },
+      {
+        "attackBonus": 1,
+        "defenceBonus": 2,
+        "location": {
+          "x": 4,
+          "y": 13
+        }
+      },
+      {
+        "attackBonus": 7,
+        "defenceBonus": 1,
+        "location": {
+          "x": 27,
+          "y": 5
+        }
+      },
+      {
+        "attackBonus": 1,
+        "defenceBonus": 1,
+        "location": {
+          "x": 33,
+          "y": 14
+        }
+      },
+      {
+        "attackBonus": 1,
+        "defenceBonus": 2,
+        "location": {
+          "x": 32,
+          "y": 4
+        }
+      },
+      {
+        "attackBonus": 1,
+        "defenceBonus": 1,
+        "location": {
+          "x": 11,
+          "y": 5
+        }
+      }
+    ],
+    "healthPacks": [
+      {
+        "location": {
+          "x": 26,
+          "y": 4
+        },
+        "health": 46
+      },
+      {
+        "location": {
+          "x": 28,
+          "y": 3
+        },
+        "health": 49
+      },
+      {
+        "location": {
+          "x": 18,
+          "y": 11
+        },
+        "health": 43
+      },
+      {
+        "location": {
+          "x": 17,
+          "y": 15
+        },
+        "health": 48
+      },
+      {
+        "location": {
+          "x": 21,
+          "y": 9
+        },
+        "health": 44
+      },
+      {
+        "location": {
+          "x": 2,
+          "y": 11
+        },
+        "health": 37
+      },
+      {
+        "location": {
+          "x": 19,
+          "y": 10
+        },
+        "health": 31
+      },
+      {
+        "location": {
+          "x": 16,
+          "y": 14
+        },
+        "health": 47
+      },
+      {
+        "location": {
+          "x": 17,
+          "y": 9
+        },
+        "health": 47
+      }
+    ]
+  },
+  "northWestCorner": {
+    "x": -19,
+    "y": -8
+  },
+  "render": [
+    "                                                     ",
+    "                                                     ",
+    "                                                     ",
+    "                                                     ",
+    "                                                     ",
+    "                                                     ",
+    "                                                     ",
+    "                                                     ",
+    "                   ##################################",
+    "                   ##*   ####### # #      # *     *# ",
+    "                   #      ####   *        *         *",
+    "                   #   .                       +@    ",
+    "                   #      @                  +     $ ",
+    "                   #     *    $               $      ",
+    "                   #   #     *           *  *        ",
+    "                   #           @                     ",
+    "                   #                       ##        ",
+    "                   #   *            +   + #####      ",
+    "                   #    *  #          +   ##### *    ",
+    "                   # +    #          +    ####*      ",
+    "                   #       # $     *      ####       ",
+    "                   #   $         *   *    ####       ",
+    "                   ##           *  +*      ####     $",
+    "                   #     @  *   @   +      ##### *   ",
+    "                   ##           #         #### #     "
+  ]
+}
