@@ -84,7 +84,7 @@ namespace SpurRoguelike.Core.Entities
             return true;
         }
 
-        public PawnView CreateView()
+        public IPawnView CreateView()
         {
             return new PawnView(this);
         }

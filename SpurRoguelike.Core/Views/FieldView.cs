@@ -4,7 +4,7 @@ using SpurRoguelike.Core.Primitives;
 
 namespace SpurRoguelike.Core.Views
 {
-    public struct FieldView : IView
+    public struct FieldView : IFieldView
     {
         public FieldView(Field field, Location? center)
         {

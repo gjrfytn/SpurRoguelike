@@ -6,42 +6,42 @@ using SpurRoguelike.Core.Primitives;
 
 namespace SpurRoguelike.Core.Views
 {
-    public class LevelView : IView
+    public class LevelView : ILevelView
     {
         public LevelView(Level level)
         {
             this.level = level;
         }
 
-        public FieldView Field => level?.Field?.CreateView(level?.Player?.Location) ?? default(FieldView);
+        public IFieldView Field => level?.Field?.CreateView(level?.Player?.Location) ?? default(FieldView);
 
-        public PawnView Player => level?.Player?.CreateView() ?? default(PawnView);
+        public IPawnView Player => level?.Player?.CreateView() ?? default(PawnView);
 
-        public IEnumerable<PawnView> Monsters => level?.Monsters.Where(m => IsVisible(m.Location)).Select(m => m.CreateView());
+        public IEnumerable<IPawnView> Monsters => level?.Monsters.Where(m => IsVisible(m.Location)).Select(m => m.CreateView());
 
-        public IEnumerable<ItemView> Items => level?.Items.Where(m => IsVisible(m.Location)).Select(i => i.CreateView());
+        public IEnumerable<IItemView> Items => level?.Items.Where(m => IsVisible(m.Location)).Select(i => i.CreateView());
 
-        public IEnumerable<HealthPackView> HealthPacks => level?.HealthPacks.Where(hp => IsVisible(hp.Location)).Select(hp => hp.CreateView());
+        public IEnumerable<IHealthPackView> HealthPacks => level?.HealthPacks.Where(hp => IsVisible(hp.Location)).Select(hp => hp.CreateView());
 
         public Random Random => level?.Random;
 
         public bool HasValue => level != null;
 
-        public PawnView GetMonsterAt(Location location)
+        public IPawnView GetMonsterAt(Location location)
         {
             if (!IsVisible(location))
                 return default(PawnView);
             return level?.GetEntity<Monster>(location)?.CreateView() ?? default(PawnView);
         }
 
-        public ItemView GetItemAt(Location location)
+        public IItemView GetItemAt(Location location)
         {
             if (!IsVisible(location))
                 return default(ItemView);
             return level?.GetEntity<Item>(location)?.CreateView() ?? default(ItemView);
         }
 
-        public HealthPackView GetHealthPackAt(Location location)
+        public IHealthPackView GetHealthPackAt(Location location)
         {
             if (!IsVisible(location))
                 return default(HealthPackView);

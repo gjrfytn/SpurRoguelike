@@ -3,7 +3,7 @@ using SpurRoguelike.Core.Primitives;
 
 namespace SpurRoguelike.Core.Views
 {
-    public struct PawnView : IView
+    public struct PawnView : IPawnView
     {
         public PawnView(Pawn pawn)
         {
@@ -22,7 +22,7 @@ namespace SpurRoguelike.Core.Views
 
         public int Health => pawn?.Health ?? 0;
 
-        public bool TryGetEquippedItem(out ItemView item)
+        public bool TryGetEquippedItem(out IItemView item)
         {
             if (pawn?.EquippedItem != null)
             {

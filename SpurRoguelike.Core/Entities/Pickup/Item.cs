@@ -55,7 +55,7 @@ namespace SpurRoguelike.Core.Entities
             return true;
         }
 
-        public ItemView CreateView()
+        public IItemView CreateView()
         {
             return new ItemView(this);
         }

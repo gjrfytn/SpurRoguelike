@@ -19,8 +19,8 @@ namespace SpurRoguelike.PlayerBot
         private const int _HiddenCellsWeight = 10;
 
         private IMapNavigationContext _Context;
-        private LevelView _Level;
-        private FieldView _Field;
+        private ILevelView _Level;
+        private IFieldView _Field;
         private Location? _Exit;
 
         private List<Location> _Traps;
@@ -50,7 +50,7 @@ namespace SpurRoguelike.PlayerBot
                 CacheWalls();
         }
 
-        public void InitializeLevel(LevelView level)
+        public void InitializeLevel(ILevelView level)
         {
             _Level = level;
             _Field = _Level.Field;
@@ -119,7 +119,7 @@ namespace SpurRoguelike.PlayerBot
             return _Field[location] != CellType.Hidden;
         }
 
-        public static bool LocationIsVisible(FieldView field, Location location)
+        public static bool LocationIsVisible(IFieldView field, Location location)
         {
             return field[location] != CellType.Hidden;
         }

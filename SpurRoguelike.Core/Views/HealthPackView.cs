@@ -3,7 +3,7 @@ using SpurRoguelike.Core.Primitives;
 
 namespace SpurRoguelike.Core.Views
 {
-    public struct HealthPackView : IView
+    public struct HealthPackView : IHealthPackView
     {
         public HealthPackView(HealthPack healthPack)
         {

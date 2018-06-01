@@ -3,7 +3,7 @@ using SpurRoguelike.Core.Primitives;
 
 namespace SpurRoguelike.Core.Views
 {
-    public struct ItemView : IView
+    public struct ItemView : IItemView
     {
         public ItemView(Item item)
         {

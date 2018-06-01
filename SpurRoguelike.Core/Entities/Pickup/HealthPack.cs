@@ -16,7 +16,7 @@ namespace SpurRoguelike.Core.Entities
             return true;
         }
 
-        public HealthPackView CreateView()
+        public IHealthPackView CreateView()
         {
             return new HealthPackView(this);
         }

@@ -20,7 +20,7 @@ namespace SpurRoguelike.UnfairBot
             _ExitField = GetType().BaseType.GetField("_Exit", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
-        protected override void UnfairBotBackdoor(LevelView levelView)
+        protected override void UnfairBotBackdoor(ILevelView levelView)
         {
             Level level = (Level)_LevelField.GetValue(levelView);
             level.Player.Upgrade(200, 200);

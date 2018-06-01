@@ -36,7 +36,7 @@ namespace SpurRoguelike.PlayerBot
 
         #endregion
 
-        public void InitializeLevel(LevelView level)
+        public void InitializeLevel(ILevelView level)
         {
             _VisibilityWidth = level.Field.VisibilityWidth;
             _VisibilityHeight = level.Field.VisibilityHeight;
@@ -89,7 +89,7 @@ namespace SpurRoguelike.PlayerBot
                 }
 
                 tile = _CachedPath[_CachedPathPointIndex];
-
+                
                 _CachedPathPointIndex++;
             }
 

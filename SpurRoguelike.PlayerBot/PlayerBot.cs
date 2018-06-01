@@ -14,8 +14,8 @@ namespace SpurRoguelike.PlayerBot
 
         private readonly System.Func<Turn>[] _Behaviours;
 
-        private LevelView _Level;
-        private PawnView _Player;
+        private ILevelView _Level;
+        private IPawnView _Player;
         private Location? _Exit;
         private int _LevelWidth;
         private int _LevelHeight;
@@ -48,7 +48,7 @@ namespace SpurRoguelike.PlayerBot
 
         #region IPlayerController
 
-        public Turn MakeTurn(LevelView levelView, IMessageReporter messageReporter)
+        public Turn MakeTurn(ILevelView levelView, IMessageReporter messageReporter)
         {
             InitializeTurn(levelView, messageReporter);
 
@@ -69,7 +69,7 @@ namespace SpurRoguelike.PlayerBot
 
         #endregion
 
-        private void InitializeLevel(LevelView level, IMessageReporter messageReporter)
+        private void InitializeLevel(ILevelView level, IMessageReporter messageReporter)
         {
             _Exit = null;
             _Reporter = new BotReporter(messageReporter);
@@ -82,7 +82,7 @@ namespace SpurRoguelike.PlayerBot
             UnfairBotBackdoor(level);
         }
 
-        private void InitializeTurn(LevelView level, IMessageReporter messageReporter)
+        private void InitializeTurn(ILevelView level, IMessageReporter messageReporter)
         {
             _Level = level;
             _Player = level.Player;
@@ -157,10 +157,10 @@ namespace SpurRoguelike.PlayerBot
             if (!items.Any())
                 return null;
 
-            if (!_Player.TryGetEquippedItem(out ItemView playerItem))
+            if (!_Player.TryGetEquippedItem(out IItemView playerItem))
                 return _Navigator.GoTo(items.OrderBy(p => _Player.Location.CalculateDistance(p.Location)).First().Location);
 
-            ItemView item = items.OrderByDescending(i => CalulateItemPower(i)).First();
+            IItemView item = items.OrderByDescending(i => CalulateItemPower(i)).First();
             if (CalulateItemPower(playerItem) + 0.001f > CalulateItemPower(item))
                 return null;
 
@@ -241,12 +241,12 @@ namespace SpurRoguelike.PlayerBot
             return _Navigator.GoTo(packs.First());
         }
 
-        private static float CalulateItemPower(ItemView item)
+        private static float CalulateItemPower(IItemView item)
         {
             return item.AttackBonus + item.DefenceBonus - (System.Math.Abs(item.AttackBonus - item.DefenceBonus) / 1000f);
         }
 
-        private static int CalculateDamage(PawnView attacker, PawnView target, bool maxDamage)
+        private static int CalculateDamage(IPawnView attacker, IPawnView target, bool maxDamage)
         {
             return (int)(((float)attacker.TotalAttack / target.Defence) * _BaseDamage * (maxDamage ? 1 : 0.95f));
         }
@@ -288,7 +288,7 @@ namespace SpurRoguelike.PlayerBot
                 if (Map.LocationIsVisible(_Level.Field, _FoundHealthPacks[i]) && !_Level.GetHealthPackAt(_FoundHealthPacks[i]).HasValue)
                     _FoundHealthPacks.RemoveAt(i);
 
-            foreach (HealthPackView pack in _Level.HealthPacks)
+            foreach (IHealthPackView pack in _Level.HealthPacks)
                 if (!_FoundHealthPacks.Contains(pack.Location))
                     _FoundHealthPacks.Add(pack.Location);
         }
@@ -302,7 +302,7 @@ namespace SpurRoguelike.PlayerBot
             _InDanger = _Player.Health < _PlayerMaxHealth * multiplier;
         }
 
-        protected virtual void UnfairBotBackdoor(LevelView level)
+        protected virtual void UnfairBotBackdoor(ILevelView level)
         {
         }
     }
